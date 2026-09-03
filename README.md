@@ -95,6 +95,8 @@ Submit your fork's public URL via the instructions in [`SUBMISSION.md`](./SUBMIS
 | `announcements.json` | 8 | Notices with priority levels and expiry dates |
 | `assignments.json` | 8 | Course assignments with deadlines and submission status |
 
+> **Important:** These JSON files are only the starting/seed data — not the database itself. Load them into a real backend (a database, or at minimum a backend service with persistent storage) on app startup. Your dashboard and AI agent must both read from and write to that backend, not the static JSON files directly. If you add, edit, or delete a record, the change must be saved in your backend and still be there after a reload — the JSON files in this repo will not update. The agent is also expected to always query the current backend state, not a cached or hardcoded copy of the seed data.
+
 ---
 
 Good luck. Build something that actually works.
