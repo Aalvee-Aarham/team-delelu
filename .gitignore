@@ -31,3 +31,7 @@ npm-debug.log*
 
 # Local scratch
 backend/dbcheck.cjs
+
+.vercel
+.env*
+!.env.example
