@@ -3,11 +3,16 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "build": "npm run build --prefix backend && npm run build --prefix frontend",
-    "tsc": "tsc --noEmit -p backend/tsconfig.json && tsc --noEmit -p frontend/tsconfig.json"
+    "build": "run-s build:backend build:frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build:frontend": "npm run build --prefix frontend",
+    "tsc": "run-s tsc:backend tsc:frontend",
+    "tsc:backend": "tsc --noEmit -p backend/tsconfig.json",
+    "tsc:frontend": "tsc --noEmit -p frontend/tsconfig.app.json"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
+    "npm-run-all2": "^9.0.3",
     "typescript": "^5.6.3"
   }
 }

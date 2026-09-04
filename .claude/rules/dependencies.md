@@ -1,24 +1,39 @@
 # Dependencies
 
 ## Backend
-- express — HTTP server
-- mongoose — MongoDB ODM
-- zod — env + request validation
-- jsonwebtoken — JWT auth
-- bcryptjs — password hashing
-- cors — cross-origin for frontend dev server
-- dotenv — load `.env` in development
+- express 4 — HTTP server
+- mongoose 8 — MongoDB ODM
+- zod 3 — env + request validation
+- jsonwebtoken 9 — JWT auth
+- bcryptjs 2 — password hashing
+- cors 2 — cross-origin for the frontend dev server
+- dotenv 16 — load `.env` in development
+- tsx 4 (dev) — run the TypeScript backend without a build step
+- typescript 5 (dev) — type checking
 
 ## Frontend
-- react, react-dom — UI
-- react-router-dom — routing
-- @tanstack/react-query — server state
-- axios — HTTP client
-- tailwindcss, postcss, autoprefixer — styling
-- shadcn/ui components (via CLI, individually recorded here as added)
-- lucide-react — icons (shadcn dependency)
+- react 19, react-dom 19 — UI
+- react-router-dom 7 — routing
+- @tanstack/react-query 5 — server state
+- axios 1 — HTTP client
+- tailwindcss 4 + @tailwindcss/vite — styling (CSS-first config in `src/index.css`)
+- shadcn/ui — UI primitives, added only via `npx shadcn@latest add <component>`
+  - installed: button, card, input, label, dialog, table, badge, select, textarea, sonner, skeleton
+- @base-ui/react — headless primitives that shadcn components build on (pulled in by the CLI)
+- class-variance-authority — variant styling (pulled in by the CLI)
+- cn — className merge helper (pulled in by the CLI)
+- sonner — toasts
+- next-themes — theme provider required by shadcn's sonner wrapper
+- lucide-react — icons
+- vite 8, @vitejs/plugin-react — build tooling
+- typescript 6 (dev) — type checking
 
-## Dev tooling (root)
-- typescript — type checking
-- concurrently — run backend + frontend together
-- tsx — run TypeScript backend in dev without a build step
+## Root
+- concurrently 9 — run backend + frontend together
+- npm-run-all2 8 — run scripts in sequence without shell `&&`, which fails when
+  npm's script-shell is PowerShell (PowerShell 5.1 has no `&&` operator)
+- typescript 5 — root type-check script
+
+## Notes
+Tailwind v4 was chosen over v3 because the current shadcn CLI requires v4's CSS-first
+configuration and refuses to initialise against a v3 `tailwind.config.js`.

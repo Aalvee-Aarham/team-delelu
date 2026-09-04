@@ -4,7 +4,7 @@ Campus data manager + AI agent with real tool calling over live MongoDB data.
 
 ## Stack
 Node 20, Express 4, TypeScript 5, Mongoose 8, zod 3, jsonwebtoken 9, bcryptjs 2 (backend)
-React 18, Vite 5, TypeScript 5, @tanstack/react-query 5, axios 1, Tailwind 3, shadcn/ui (frontend)
+React 19, Vite 8, TypeScript 6, @tanstack/react-query 5, axios 1, Tailwind 4, shadcn/ui (frontend)
 Groq (openai/gpt-oss-120b) primary LLM, Gemini (gemini-3.8-flash) fallback
 
 ## Run
