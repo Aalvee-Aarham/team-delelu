@@ -22,3 +22,5 @@
 [frontend/src/lib/types.ts] add CampusAnalytics type | shared with AnalyticsChart + ChatPage
 [frontend/src/pages/ChatPage.tsx] fetch analytics on get_campus_analytics tool call, render chart, add analytics chips, add chart field to Turn | T50-T52
 [frontend/package.json] add recharts@2 | T50
+[backend/src/agent/provider.types.ts] add ToolCall.geminiThoughtSignature | Gemini rejects a functionCall replayed without the exact signature it issued
+[backend/src/agent/provider.gemini.ts] capture thoughtSignature on Gemini's own tool calls, replay it back verbatim; collapse cross-provider tool-call turns (e.g. after Groq->Gemini failover) to plain text instead of a forged functionCall | fixes "Internal server error" (all providers failed) whenever a multi-round tool loop failed over to Gemini mid-conversation — confirmed live pre-fix reproduction and post-fix success
