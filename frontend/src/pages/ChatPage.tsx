@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Send, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import { Send, RefreshCw, AlertCircle, Sparkles, BarChart3 } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/axios";
 import { onCampusChange } from "@/hooks/useChangeStream";
 import { useAuth } from "@/context/AuthContext";
-import type { AgentResponse, ChangeEvent } from "@/lib/types";
+import type { AgentResponse, CampusAnalytics, ChangeEvent } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToolTrace } from "@/components/ToolTrace";
+import { AnalyticsChart } from "@/components/AnalyticsChart";
 
 interface Turn {
   id: number;
@@ -18,6 +19,7 @@ interface Turn {
   stale?: { collection: string; id: string } | null;
   previous?: string;
   refreshing?: boolean;
+  chart?: CampusAnalytics | null;
 }
 
 const STARTERS = [
@@ -28,6 +30,16 @@ const STARTERS = [
   "Which labs have a projector and can fit at least 30 people?",
   "Book Room 7A02 tomorrow from 3 PM to 5 PM.",
 ];
+
+const ANALYTICS_CHIPS = ["📊 Generate Campus Analytics", "Analyze Room Utilization"];
+
+async function fetchChartIfRequested(data: AgentResponse): Promise<CampusAnalytics | null> {
+  const call = data.toolCalls.find((c) => c.tool === "get_campus_analytics" && c.ok);
+  if (!call) return null;
+  const date = typeof call.args.date === "string" ? call.args.date : undefined;
+  const { data: analytics } = await api.get<CampusAnalytics>("/analytics", { params: date ? { date } : undefined });
+  return analytics;
+}
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -81,8 +93,12 @@ export default function ChatPage() {
     ask.mutate(
       { messages: [...history(index), { role: "user", content: question }] },
       {
-        onSuccess: (data) =>
-          setTurns((t) => t.map((x) => (x.id === id ? { ...x, answer: data.reply, result: data } : x))),
+        onSuccess: (data) => {
+          setTurns((t) => t.map((x) => (x.id === id ? { ...x, answer: data.reply, result: data } : x)));
+          fetchChartIfRequested(data).then((chart) => {
+            if (chart) setTurns((t) => t.map((x) => (x.id === id ? { ...x, chart } : x)));
+          });
+        },
         onError: (err) =>
           setTurns((t) => t.map((x) => (x.id === id ? { ...x, error: apiErrorMessage(err) } : x))),
       }
@@ -93,15 +109,18 @@ export default function ChatPage() {
     setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, refreshing: true } : x)));
     api
       .post<AgentResponse>("/agent/chat", { messages: [{ role: "user", content: turn.question }] })
-      .then(({ data }) =>
+      .then(({ data }) => {
         setTurns((t) =>
           t.map((x) =>
             x.id === turn.id
               ? { ...x, previous: x.answer, answer: data.reply, result: data, stale: null, refreshing: false }
               : x
           )
-        )
-      )
+        );
+        fetchChartIfRequested(data).then((chart) => {
+          if (chart) setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, chart } : x)));
+        });
+      })
       .catch((err) =>
         setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, error: apiErrorMessage(err), refreshing: false } : x)))
       );
@@ -185,6 +204,8 @@ export default function ChatPage() {
                       </div>
                     )}
 
+                    {turn.chart && !turn.stale && <AnalyticsChart data={turn.chart} />}
+
                     {turn.result && <ToolTrace result={turn.result} />}
                   </>
                 )}
@@ -195,8 +216,22 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
+      <div className="mt-3 flex flex-wrap gap-2">
+        {ANALYTICS_CHIPS.map((chip) => (
+          <button
+            key={chip}
+            onClick={() => send(chip.replace("📊 ", ""))}
+            disabled={ask.isPending}
+            className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          >
+            <BarChart3 className="h-3 w-3" />
+            {chip.replace("📊 ", "")}
+          </button>
+        ))}
+      </div>
+
       <form
-        className="mt-4 flex gap-2 border-t border-border pt-4"
+        className="mt-3 flex gap-2 border-t border-border pt-4"
         onSubmit={(e) => {
           e.preventDefault();
           send(input);

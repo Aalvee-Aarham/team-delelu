@@ -18,3 +18,7 @@
 [backend/src/services/analytics.service.ts] created | campus-wide aggregates for agent + dashboard charts
 [backend/src/routes/analytics.routes.ts] created, mounted at /api/analytics | REST access to the same aggregates
 [.claude/rules/dependencies.md] add recharts | in-chat analytics charts (T50)
+[frontend/src/components/AnalyticsChart.tsx] created | donut/bar/meter charts for campus analytics, dataviz-skill palette validated
+[frontend/src/lib/types.ts] add CampusAnalytics type | shared with AnalyticsChart + ChatPage
+[frontend/src/pages/ChatPage.tsx] fetch analytics on get_campus_analytics tool call, render chart, add analytics chips, add chart field to Turn | T50-T52
+[frontend/package.json] add recharts@2 | T50

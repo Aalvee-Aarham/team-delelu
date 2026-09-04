@@ -208,7 +208,17 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
 
     case "get_campus_analytics": {
       const data = await computeAnalytics(args.date);
-      return { ok: true, data, provenance: [] };
+      const [rooms, assignments, events, schedules] = await Promise.all([
+        Room.find({}, { _id: 0, id: 1 }).lean(),
+        Assignment.find({}, { _id: 0, id: 1 }).lean(),
+        Event.find({}, { _id: 0, id: 1 }).lean(),
+        Schedule.find({}, { _id: 0, id: 1 }).lean(),
+      ]);
+      return {
+        ok: true,
+        data,
+        provenance: [...prov("rooms", rooms), ...prov("assignments", assignments), ...prov("events", events), ...prov("schedules", schedules)],
+      };
     }
 
     case "book_room": {

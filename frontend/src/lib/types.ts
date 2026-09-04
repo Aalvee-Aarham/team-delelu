@@ -106,6 +106,15 @@ export interface AgentResponse {
   latencyMs: number;
 }
 
+export interface CampusAnalytics {
+  date: string;
+  roomUtilization: { total: number; busy: number; free: number };
+  assignmentStatus: { status: string; count: number }[];
+  eventCapacity: { event: string; capacity: number; registered: number }[];
+  bookingsByHour: { hour: number; count: number }[];
+  weeklyClassLoad: { day: string; count: number }[];
+}
+
 export interface ChangeEvent {
   type: "change";
   collection: string;
