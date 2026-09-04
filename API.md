@@ -38,3 +38,43 @@
 | GET | /api/stream | sseStream | — | SSE: `{type:"change",collection,action,id,at}` |
 
 All routes except /health and /api/auth/* require `Authorization: Bearer <jwt>`. Admin-only routes reject non-admin tokens with 403.
+
+## Courses
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/courses` | any | Filters: `archived`, `code` |
+| GET | `/api/courses/:id` | any | |
+| POST | `/api/courses` | admin | |
+| PATCH | `/api/courses/:id` | admin | |
+| DELETE | `/api/courses/:id` | admin | |
+| GET | `/api/courses/:id/stream` | any | `{ course, assignments, announcements, submissions }`. Students get only their own submissions; admins get every student's. |
+| POST | `/api/courses/:id/enroll` | any | Join the course |
+| DELETE | `/api/courses/:id/enroll` | any | Leave the course |
+
+## Submissions
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/submissions` | any | Students see only their own. Filters: `assignment_id`, `course_id`, `status` |
+| GET | `/api/submissions/:id` | any | Same scoping |
+| POST | `/api/submissions` | student | Upsert on (assignment, student). Body: `assignment_id`, `text`, `attachments[]`. Needs at least text or one file. Sets `late` against the deadline. 409 once accepted or rejected. |
+| PATCH | `/api/submissions/:id/review` | admin | Body: `status` (submitted/accepted/returned/rejected), `grade`, `feedback`. Grade above the assignment total is rejected. |
+| DELETE | `/api/submissions/:id` | owner or admin | Owners may withdraw only while still `submitted` |
+
+## Comments
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/comments` | any | Filters: `target_type`, `target_id`, `course_id` |
+| POST | `/api/comments` | any | Body: `target_type` (assignment/announcement/course/event/submission), `target_id`, `course_id`, `parent_id`, `body`. Replies are one level deep only. |
+| DELETE | `/api/comments/:id` | author or admin | Deleting a root also deletes its replies |
+
+## Uploads
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/api/uploads/config` | any | `{ submissions, images, maxMb }` — which provider is live |
+| POST | `/api/uploads/submissions` | any | multipart, field `files`, up to 5. Cloudinary, or disk when unconfigured |
+| POST | `/api/uploads/images` | admin | multipart, field `file`, images only. UploadThing, or disk when unconfigured |
+| GET | `/api/uploads/files/:name` | public | Serves the disk fallback so `<img>` tags work without a header |

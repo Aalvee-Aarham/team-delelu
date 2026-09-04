@@ -43,6 +43,32 @@ export const TOOLS: ToolDef[] = [
     adminOnly: false,
   },
   {
+    name: "get_courses",
+    description:
+      "Read the course catalogue. Each course groups its own classwork, notices and submissions, the way a Google Classroom class does. Filter by course code, or omit to list every course.",
+    parameters: obj({
+      code: str("Course code, e.g. 'CSE 4113'"),
+    }),
+    args: z.object({ code: z.string().optional() }),
+    adminOnly: false,
+  },
+  {
+    name: "get_submissions",
+    description:
+      "Read assignment submissions. Students see only their own; admins see every student's. Filter by assignment id, course code, or status (submitted, accepted, returned, rejected). Use this to answer 'what have I handed in', 'was my work accepted', or for admins 'what is waiting to be marked'.",
+    parameters: obj({
+      assignment_id: str("Assignment id, e.g. 'asgn-001'"),
+      course: str("Course code, e.g. 'CSE 4113'"),
+      status: str("submitted, accepted, returned or rejected"),
+    }),
+    args: z.object({
+      assignment_id: z.string().optional(),
+      course: z.string().optional(),
+      status: z.string().optional(),
+    }),
+    adminOnly: false,
+  },
+  {
     name: "get_announcements",
     description:
       "Read campus announcements and notices. Filter by priority, or set active_only to exclude expired notices. Always check here when a user asks whether something changed, moved, or was cancelled.",

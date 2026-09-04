@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Shell } from "@/components/Shell";
+import { BrandMark } from "@/components/Brand";
+import LandingPage from "@/pages/LandingPage";
 import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -9,6 +11,10 @@ import RoomsPage from "@/pages/RoomsPage";
 import EventsPage from "@/pages/EventsPage";
 import AnnouncementsPage from "@/pages/AnnouncementsPage";
 import AssignmentsPage from "@/pages/AssignmentsPage";
+import AssignmentDetailPage from "@/pages/AssignmentDetailPage";
+import CoursesPage from "@/pages/CoursesPage";
+import CourseDetailPage from "@/pages/CourseDetailPage";
+import SubmissionsPage from "@/pages/SubmissionsPage";
 import ChatPage from "@/pages/ChatPage";
 
 export default function App() {
@@ -16,8 +22,9 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        Loading CampusOS…
+      <div className="grain relative flex h-full flex-col items-center justify-center gap-4 bg-paper">
+        <BrandMark className="h-11 w-11 animate-pulse" />
+        <span className="eyebrow text-muted-foreground">Loading CampusOS</span>
       </div>
     );
   }
@@ -25,9 +32,10 @@ export default function App() {
   if (!user) {
     return (
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -41,6 +49,10 @@ export default function App() {
         <Route path="/events" element={<EventsPage />} />
         <Route path="/announcements" element={<AnnouncementsPage />} />
         <Route path="/assignments" element={<AssignmentsPage />} />
+        <Route path="/assignments/:assignmentId" element={<AssignmentDetailPage />} />
+        <Route path="/courses" element={<CoursesPage />} />
+        <Route path="/courses/:courseId" element={<CourseDetailPage />} />
+        <Route path="/submissions" element={<SubmissionsPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

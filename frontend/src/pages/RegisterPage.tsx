@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { apiErrorMessage } from "@/lib/axios";
+import { AuthLayout } from "@/components/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,41 +29,73 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex h-full items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <h1 className="mb-6 text-center text-xl font-semibold">Create your CampusOS account</h1>
-        <form onSubmit={submit} className="space-y-4 rounded-xl border border-border bg-card p-6">
-          <div className="grid gap-1.5">
-            <Label htmlFor="name">Full name</Label>
-            <Input id="name" value={form.name} onChange={set("name")} required />
-          </div>
-          <div className="grid gap-1.5">
+    <AuthLayout
+      eyebrow="Create account"
+      title="Join CampusOS"
+      subtitle="Register once, then everything on campus follows your section and student ID."
+      footer={
+        <>
+          Already registered?{" "}
+          <Link to="/login" className="font-medium text-primary hover:underline">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-5">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Full name</Label>
+          <Input id="name" autoComplete="name" value={form.name} onChange={set("name")} required />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-2">
             <Label htmlFor="student_id">Student ID</Label>
-            <Input id="student_id" placeholder="20-40532" value={form.student_id} onChange={set("student_id")} required />
+            <Input
+              id="student_id"
+              placeholder="20-40532"
+              value={form.student_id}
+              onChange={set("student_id")}
+              required
+            />
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor="section">Section</Label>
             <Input id="section" placeholder="B" value={form.section} onChange={set("section")} required />
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={form.email} onChange={set("email")} required />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" minLength={6} value={form.password} onChange={set("password")} required />
-          </div>
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Creating…" : "Create account"}
-          </Button>
-        </form>
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          Already registered?{" "}
-          <Link to="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </div>
-    </div>
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email address</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@campusos.edu"
+            value={form.email}
+            onChange={set("email")}
+            required
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            minLength={6}
+            value={form.password}
+            onChange={set("password")}
+            required
+          />
+          <span className="text-[11px] text-muted-foreground">At least six characters.</span>
+        </div>
+
+        <Button type="submit" className="w-full" size="lg" disabled={busy}>
+          {busy ? "Creating account…" : "Create account"}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

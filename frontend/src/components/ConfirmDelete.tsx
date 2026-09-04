@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,9 +22,13 @@ export function ConfirmDelete({ open, onOpenChange, label, onConfirm, pending }:
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
+          <span className="mb-1 grid h-9 w-9 place-items-center rounded-md border border-destructive/30 bg-destructive/10 text-destructive">
+            <TriangleAlert className="h-4 w-4" />
+          </span>
           <DialogTitle>Delete this record?</DialogTitle>
           <DialogDescription>
-            {label} will be permanently removed. This cannot be undone.
+            <span className="font-medium text-foreground">{label}</span> will be permanently removed
+            and every open tab will see it disappear. This cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

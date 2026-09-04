@@ -19,6 +19,9 @@ export interface EventDoc {
   registered: number;
   registrations: Registration[];
   status: "upcoming" | "ongoing" | "completed" | "cancelled" | "full";
+  image_url: string;
+  image_credit: string;
+  image_provider: "unsplash" | "uploadthing" | "cloudinary" | "local";
 }
 
 const eventSchema = new Schema<EventDoc>({
@@ -38,6 +41,9 @@ const eventSchema = new Schema<EventDoc>({
     default: [],
   },
   status: { type: String, required: true },
+  image_url: { type: String, default: "" },
+  image_credit: { type: String, default: "" },
+  image_provider: { type: String, enum: ["unsplash", "uploadthing", "cloudinary", "local"], default: "unsplash" },
 }, { versionKey: false });
 
 eventSchema.index({ date: 1 });

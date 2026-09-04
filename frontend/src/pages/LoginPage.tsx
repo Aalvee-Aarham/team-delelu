@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { GraduationCap, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiErrorMessage } from "@/lib/axios";
+import { AuthLayout } from "@/components/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,49 +33,67 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-full items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-xl bg-primary text-lg font-bold text-primary-foreground">
-            C
-          </div>
-          <h1 className="text-xl font-semibold">Sign in to CampusOS</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Your campus, in one place.</p>
+    <AuthLayout
+      eyebrow="Sign in"
+      title="Welcome back"
+      subtitle="Use your campus credentials to reach your schedule, rooms and the agent."
+      footer={
+        <>
+          No account yet?{" "}
+          <Link to="/register" className="font-medium text-primary hover:underline">
+            Create one
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-5">
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email address</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@campusos.edu"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
 
-        <form onSubmit={submit} className="space-y-4 rounded-xl border border-border bg-card p-6">
-          <div className="grid gap-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          </div>
-          <Button type="submit" className="w-full" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </Button>
+        <div className="grid gap-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
 
-          <div className="border-t border-border pt-4">
-            <p className="mb-2 text-center text-xs text-muted-foreground">Demo accounts</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => fill("student")}>
-                Student
-              </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => fill("admin")}>
-                Admin
-              </Button>
-            </div>
-          </div>
-        </form>
+        <Button type="submit" className="w-full" size="lg" disabled={busy}>
+          {busy ? "Signing in…" : "Sign in"}
+        </Button>
 
-        <p className="mt-4 text-center text-sm text-muted-foreground">
-          No account?{" "}
-          <Link to="/register" className="text-primary hover:underline">
-            Register
-          </Link>
-        </p>
-      </div>
-    </div>
+        <div className="border-t border-ink/10 pt-5">
+          <div className="eyebrow mb-3 text-muted-foreground">Demo accounts</div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => fill("student")}>
+              <GraduationCap />
+              Student
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => fill("admin")}>
+              <ShieldCheck />
+              Admin
+            </Button>
+          </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+            Admins can add, edit and delete records. Students see the agent refuse those same
+            actions.
+          </p>
+        </div>
+      </form>
+    </AuthLayout>
   );
 }

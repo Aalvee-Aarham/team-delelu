@@ -12,11 +12,23 @@
     "capacity": 60,
     "registered": 47,
     "registrations": [
-      { "student_id": "20-40532", "name": "Sakibul Hassan" },
-      { "student_id": "20-40511", "name": "Farhan Ahmed" },
-      { "student_id": "20-40498", "name": "Tasnia Islam" }
+      {
+        "student_id": "20-40532",
+        "name": "Sakibul Hassan"
+      },
+      {
+        "student_id": "20-40511",
+        "name": "Farhan Ahmed"
+      },
+      {
+        "student_id": "20-40498",
+        "name": "Tasnia Islam"
+      }
     ],
-    "status": "upcoming"
+    "status": "upcoming",
+    "image_url": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80",
+    "image_credit": "Hackathon team sprint — Unsplash",
+    "image_provider": "unsplash"
   },
   {
     "id": "evt-002",
@@ -31,10 +43,19 @@
     "capacity": 70,
     "registered": 62,
     "registrations": [
-      { "student_id": "20-40532", "name": "Sakibul Hassan" },
-      { "student_id": "21-41205", "name": "Rafi Hossain" }
+      {
+        "student_id": "20-40532",
+        "name": "Sakibul Hassan"
+      },
+      {
+        "student_id": "21-41205",
+        "name": "Rafi Hossain"
+      }
     ],
-    "status": "upcoming"
+    "status": "upcoming",
+    "image_url": "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?auto=format&fit=crop&w=1200&q=80",
+    "image_credit": "Lecture theatre talk — Unsplash",
+    "image_provider": "unsplash"
   },
   {
     "id": "evt-003",
@@ -49,10 +70,19 @@
     "capacity": 45,
     "registered": 38,
     "registrations": [
-      { "student_id": "20-40532", "name": "Sakibul Hassan" },
-      { "student_id": "20-40511", "name": "Farhan Ahmed" }
+      {
+        "student_id": "20-40532",
+        "name": "Sakibul Hassan"
+      },
+      {
+        "student_id": "20-40511",
+        "name": "Farhan Ahmed"
+      }
     ],
-    "status": "upcoming"
+    "status": "upcoming",
+    "image_url": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80",
+    "image_credit": "Group study session — Unsplash",
+    "image_provider": "unsplash"
   },
   {
     "id": "evt-004",
@@ -67,9 +97,15 @@
     "capacity": 30,
     "registered": 22,
     "registrations": [
-      { "student_id": "20-40532", "name": "Sakibul Hassan" }
+      {
+        "student_id": "20-40532",
+        "name": "Sakibul Hassan"
+      }
     ],
-    "status": "upcoming"
+    "status": "upcoming",
+    "image_url": "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80",
+    "image_credit": "Planning meeting — Unsplash",
+    "image_provider": "unsplash"
   },
   {
     "id": "evt-005",
@@ -84,7 +120,10 @@
     "capacity": 70,
     "registered": 55,
     "registrations": [],
-    "status": "upcoming"
+    "status": "upcoming",
+    "image_url": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=80",
+    "image_credit": "Campus orientation — Unsplash",
+    "image_provider": "unsplash"
   },
   {
     "id": "evt-006",
@@ -99,9 +138,15 @@
     "capacity": 30,
     "registered": 30,
     "registrations": [
-      { "student_id": "21-41205", "name": "Rafi Hossain" }
+      {
+        "student_id": "21-41205",
+        "name": "Rafi Hossain"
+      }
     ],
-    "status": "full"
+    "status": "full",
+    "image_url": "https://images.unsplash.com/photo-1556075798-4825dfaaf498?auto=format&fit=crop&w=1200&q=80",
+    "image_credit": "Git workshop — Unsplash",
+    "image_provider": "unsplash"
   },
   {
     "id": "evt-007",
@@ -116,6 +161,9 @@
     "capacity": 30,
     "registered": 18,
     "registrations": [],
-    "status": "upcoming"
+    "status": "upcoming",
+    "image_url": "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?auto=format&fit=crop&w=1200&q=80",
+    "image_credit": "Programming contest desks — Unsplash",
+    "image_provider": "unsplash"
   }
 ]

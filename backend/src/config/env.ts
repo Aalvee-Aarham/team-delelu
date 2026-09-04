@@ -3,6 +3,11 @@ import { z } from "zod";
 
 dotenv.config();
 
+const optionalSecret = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.string().min(1).optional()
+);
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive(),
   NODE_ENV: z.enum(["development", "production", "test"]),
@@ -15,6 +20,11 @@ const envSchema = z.object({
   GEMINI_API_KEY_1: z.string().min(1),
   GEMINI_API_KEY_2: z.string().min(1),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  CLOUDINARY_CLOUD_NAME: optionalSecret,
+  CLOUDINARY_API_KEY: optionalSecret,
+  CLOUDINARY_API_SECRET: optionalSecret,
+  UPLOADTHING_TOKEN: optionalSecret,
+  MAX_UPLOAD_MB: z.coerce.number().int().positive().default(16),
 });
 
 const parsed = envSchema.safeParse(process.env);

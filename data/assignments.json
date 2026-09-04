@@ -9,7 +9,20 @@
     "deadline": "2026-09-09",
     "submission_platform": "Google Classroom",
     "status": "pending",
-    "marks": 10
+    "marks": 10,
+    "course_id": "crs-4113",
+    "attachments": [
+      {
+        "url": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+        "name": "iris-scatter-reference.jpg",
+        "mime": "image/jpeg",
+        "size": 0,
+        "provider": "link",
+        "kind": "image"
+      }
+    ],
+    "accepts_text": true,
+    "accepts_files": true
   },
   {
     "id": "asgn-002",
@@ -21,7 +34,11 @@
     "deadline": "2026-09-10",
     "submission_platform": "Google Classroom",
     "status": "pending",
-    "marks": 15
+    "marks": 15,
+    "course_id": "crs-4130",
+    "attachments": [],
+    "accepts_text": true,
+    "accepts_files": true
   },
   {
     "id": "asgn-003",
@@ -33,7 +50,11 @@
     "deadline": "2026-09-15",
     "submission_platform": "Physical submission to FMS sir",
     "status": "pending",
-    "marks": 20
+    "marks": 20,
+    "course_id": "crs-4137",
+    "attachments": [],
+    "accepts_text": true,
+    "accepts_files": true
   },
   {
     "id": "asgn-004",
@@ -45,7 +66,11 @@
     "deadline": "2026-09-07",
     "submission_platform": "Physical submission",
     "status": "submitted",
-    "marks": 10
+    "marks": 10,
+    "course_id": "crs-4142",
+    "attachments": [],
+    "accepts_text": true,
+    "accepts_files": true
   },
   {
     "id": "asgn-005",
@@ -57,7 +82,11 @@
     "deadline": "2026-09-11",
     "submission_platform": "Google Classroom",
     "status": "pending",
-    "marks": 10
+    "marks": 10,
+    "course_id": "crs-4173",
+    "attachments": [],
+    "accepts_text": true,
+    "accepts_files": true
   },
   {
     "id": "asgn-006",
@@ -69,7 +98,11 @@
     "deadline": "2026-09-04",
     "submission_platform": "Physical submission in class",
     "status": "submitted",
-    "marks": 10
+    "marks": 10,
+    "course_id": "crs-4129",
+    "attachments": [],
+    "accepts_text": true,
+    "accepts_files": true
   },
   {
     "id": "asgn-007",
@@ -81,7 +114,11 @@
     "deadline": "2026-09-14",
     "submission_platform": "Google Classroom",
     "status": "pending",
-    "marks": 15
+    "marks": 15,
+    "course_id": "crs-4141",
+    "attachments": [],
+    "accepts_text": true,
+    "accepts_files": true
   },
   {
     "id": "asgn-008",
@@ -93,6 +130,10 @@
     "deadline": "2026-09-17",
     "submission_platform": "Google Classroom",
     "status": "pending",
-    "marks": 10
+    "marks": 10,
+    "course_id": "crs-4114",
+    "attachments": [],
+    "accepts_text": true,
+    "accepts_files": true
   }
 ]

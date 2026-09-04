@@ -8,6 +8,10 @@ import { Event } from "../models/event.model";
 import { Announcement } from "../models/announcement.model";
 import { Assignment } from "../models/assignment.model";
 import { User } from "../models/user.model";
+import { Course } from "../models/course.model";
+import { Submission } from "../models/submission.model";
+import { Comment } from "../models/comment.model";
+import { backfillCourseLinks, backfillEventImages } from "./backfill";
 
 const dataDir = path.join(__dirname, "..", "..", "..", "data");
 
@@ -109,6 +113,11 @@ export async function runSeed() {
   await seedRoomsAndBookings();
   await seedCollection(Event, "events.json", "events");
   await seedCollection(Announcement, "announcements.json", "announcements");
+  await seedCollection(Course, "courses.json", "courses");
   await seedCollection(Assignment, "assignments.json", "assignments");
+  await seedCollection(Submission, "submissions.json", "submissions");
+  await seedCollection(Comment, "comments.json", "comments");
   await seedDemoUsers();
+  await backfillCourseLinks();
+  await backfillEventImages();
 }

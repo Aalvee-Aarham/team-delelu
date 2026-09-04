@@ -1,31 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, DoorOpen, Megaphone, NotebookPen, PartyPopper, Activity } from "lucide-react";
+import {
+  Activity,
+  CalendarDays,
+  DoorOpen,
+  Megaphone,
+  NotebookPen,
+  PartyPopper,
+} from "lucide-react";
 import { useResourceList } from "@/hooks/useResource";
 import { onCampusChange } from "@/hooks/useChangeStream";
 import { useAuth } from "@/context/AuthContext";
 import type { Announcement, Assignment, CampusEvent, ChangeEvent, Room, Schedule } from "@/lib/types";
+import { PRIORITY_TONE } from "@/lib/tone";
+import { DAYS, nextClass } from "@/lib/schedule.utils";
+import { PageHeader } from "@/components/PageHeader";
+import { Panel } from "@/components/Panel";
+import { StatTile } from "@/components/StatTile";
+import { StatusPill } from "@/components/StatusPill";
+import { NextClassPanel } from "@/components/NextClassPanel";
+import { StackedMeter, Meter } from "@/components/Meter";
 import { Skeleton } from "@/components/ui/skeleton";
-
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-function nextClass(schedules: Schedule[], section: string) {
-  const now = new Date();
-  const nowDay = now.getDay();
-  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-  const mine = schedules.filter((s) => s.section === section || s.section.includes(section));
-  const pool = mine.length > 0 ? mine : schedules;
-
-  for (let offset = 0; offset < 7; offset++) {
-    const dayName = DAYS[(nowDay + offset) % 7];
-    const onDay = pool
-      .filter((s) => s.day === dayName)
-      .filter((s) => offset > 0 || s.start_time > nowTime)
-      .sort((a, b) => a.start_time.localeCompare(b.start_time));
-    if (onDay.length > 0) return { cls: onDay[0], inDays: offset };
-  }
-  return null;
-}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -41,150 +36,243 @@ export default function DashboardPage() {
 
   const today = new Date().toISOString().slice(0, 10);
   const weekEnd = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const todayName = DAYS[new Date().getDay()];
 
+  const allRooms = rooms.data ?? [];
+  const unavailable = allRooms.filter((r) => r.status === "unavailable").length;
+  const booked = allRooms.filter((r) => r.status !== "unavailable" && r.bookings.length > 0).length;
+  const free = Math.max(0, allRooms.length - unavailable - booked);
+
+  const classesToday = (schedules.data ?? []).filter((s) => s.day === todayName);
   const dueThisWeek = (assignments.data ?? []).filter(
     (a) => a.status === "pending" && a.deadline >= today && a.deadline <= weekEnd
   );
-  const highPriority = (announcements.data ?? []).filter((a) => a.priority === "high" && a.expires >= today);
-  const upcoming = (events.data ?? []).filter((e) => e.status === "upcoming" || e.status === "ongoing");
+  const highPriority = (announcements.data ?? []).filter(
+    (a) => a.priority === "high" && a.expires >= today
+  );
+  const upcoming = (events.data ?? []).filter(
+    (e) => e.status === "upcoming" || e.status === "ongoing"
+  );
   const next = schedules.data ? nextClass(schedules.data, user?.section ?? "") : null;
 
-  const loading = schedules.isLoading || rooms.isLoading || events.isLoading;
-
   const TILES = [
-    { to: "/schedules", label: "Classes", value: schedules.data?.length, icon: CalendarDays },
-    { to: "/rooms", label: "Rooms", value: rooms.data?.length, icon: DoorOpen },
-    { to: "/events", label: "Events", value: events.data?.length, icon: PartyPopper },
-    { to: "/announcements", label: "Notices", value: announcements.data?.length, icon: Megaphone },
-    { to: "/assignments", label: "Assignments", value: assignments.data?.length, icon: NotebookPen },
+    {
+      to: "/schedules",
+      label: "Classes today",
+      value: classesToday.length,
+      hint: `${schedules.data?.length ?? 0} in the weekly timetable`,
+      icon: CalendarDays,
+      tone: "amber" as const,
+    },
+    {
+      to: "/assignments",
+      label: "Due this week",
+      value: dueThisWeek.length,
+      hint: `${assignments.data?.length ?? 0} assignments tracked`,
+      icon: NotebookPen,
+      tone: "red" as const,
+    },
+    {
+      to: "/rooms",
+      label: "Rooms free",
+      value: free,
+      hint: `${allRooms.length} rooms on campus`,
+      icon: DoorOpen,
+      tone: "blue" as const,
+    },
+    {
+      to: "/events",
+      label: "Events ahead",
+      value: upcoming.length,
+      hint: `${events.data?.length ?? 0} in total`,
+      icon: PartyPopper,
+      tone: "violet" as const,
+    },
+    {
+      to: "/announcements",
+      label: "Urgent notices",
+      value: highPriority.length,
+      hint: `${announcements.data?.length ?? 0} active notices`,
+      icon: Megaphone,
+      tone: "ink" as const,
+    },
   ];
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Good to see you, {user?.name.split(" ")[0]}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        </p>
-      </div>
+      <PageHeader
+        eyebrow={new Date().toLocaleDateString(undefined, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
+        title={`Good to see you, ${user?.name.split(" ")[0] ?? "there"}`}
+        subtitle="Everything below is read straight from the live database and updates itself as records change."
+      />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {TILES.map(({ to, label, value, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/50"
-          >
-            <Icon className="mb-2 h-4 w-4 text-muted-foreground" />
-            <div className="text-2xl font-semibold tabular-nums">{value ?? "—"}</div>
-            <div className="text-xs text-muted-foreground">{label}</div>
-          </Link>
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {TILES.map((tile) => (
+          <StatTile key={tile.to} {...tile} />
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Your next class</h2>
-          {loading ? (
-            <Skeleton className="h-20 w-full" />
-          ) : next ? (
-            <div>
-              <div className="text-lg font-semibold">{next.cls.course}</div>
-              <div className="text-sm text-muted-foreground">{next.cls.title}</div>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                <span>
-                  {next.inDays === 0 ? "Today" : next.inDays === 1 ? "Tomorrow" : next.cls.day} · {next.cls.start_time}–
-                  {next.cls.end_time}
-                </span>
-                <span className="text-muted-foreground">Room {next.cls.room}</span>
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">{next.cls.instructor}</div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nothing scheduled.</p>
-          )}
-        </div>
+      <div className="mb-6 grid gap-5 lg:grid-cols-[1.35fr_1fr]">
+        <NextClassPanel next={next} loading={schedules.isLoading} />
 
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Activity className="h-4 w-4" /> Live changes
-          </h2>
+        <Panel eyebrow="Realtime" title="Live changes" icon={Activity} tone="green">
           {feed.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nothing yet. Edit a record in another tab and it appears here instantly.
+            <p className="text-[13px] leading-relaxed text-muted-foreground">
+              Nothing yet. Edit a record in another tab and it appears here instantly, without a
+              refresh.
             </p>
           ) : (
-            <ul className="space-y-1.5 text-sm">
+            <ul className="space-y-2.5">
               {feed.map((e, i) => (
-                <li key={i} className="flex items-center gap-2 text-muted-foreground">
+                <li key={`${e.id}-${i}`} className="flex items-center gap-2.5 text-[13px]">
                   <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      e.action === "delete" ? "bg-destructive" : e.action === "create" ? "bg-ok" : "bg-primary"
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                      e.action === "delete"
+                        ? "bg-destructive"
+                        : e.action === "create"
+                          ? "bg-ok"
+                          : "bg-primary"
                     }`}
                   />
-                  <span className="text-foreground">{e.collection}</span> {e.action}d
-                  <span className="font-mono text-xs">{e.id}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Due this week</h2>
-          {dueThisWeek.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing due in the next seven days.</p>
-          ) : (
-            <ul className="space-y-2">
-              {dueThisWeek.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="min-w-0">
-                    <span className="font-medium">{a.course}</span>{" "}
-                    <span className="text-muted-foreground">{a.title}</span>
+                  <span className="font-medium capitalize">{e.collection}</span>
+                  <span className="text-muted-foreground">{e.action}d</span>
+                  <span className="ml-auto truncate font-mono text-[11px] text-muted-foreground">
+                    {e.id}
                   </span>
-                  <span className="shrink-0 text-xs tabular-nums text-warn">{a.deadline}</span>
                 </li>
               ))}
             </ul>
           )}
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">High priority notices</h2>
-          {highPriority.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing urgent.</p>
-          ) : (
-            <ul className="space-y-2">
-              {highPriority.slice(0, 4).map((a) => (
-                <li key={a.id} className="text-sm">
-                  <div className="font-medium">{a.title}</div>
-                  <div className="line-clamp-1 text-xs text-muted-foreground">{a.body}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        </Panel>
       </div>
 
-      {upcoming.length > 0 && (
-        <div className="mt-4 rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Coming up on campus</h2>
-          <div className="flex flex-wrap gap-2">
-            {upcoming.slice(0, 5).map((e) => (
-              <Link
-                key={e.id}
-                to="/events"
-                className="rounded-lg border border-border bg-background px-3 py-2 text-xs transition-colors hover:border-primary/50"
-              >
-                <div className="font-medium">{e.name}</div>
-                <div className="text-muted-foreground">
-                  {e.date} · {e.venue}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="mb-6 grid gap-5 lg:grid-cols-2">
+        <Panel
+          eyebrow="Next seven days"
+          title="Due this week"
+          icon={NotebookPen}
+          tone="red"
+          action={
+            <Link to="/assignments" className="text-[13px] font-medium text-primary hover:underline">
+              View all
+            </Link>
+          }
+        >
+          {dueThisWeek.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">Nothing due in the next seven days.</p>
+          ) : (
+            <ul className="divide-y divide-ink/10">
+              {dueThisWeek.slice(0, 5).map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
+                  <span className="min-w-0">
+                    <span className="text-[13px] font-semibold">{a.course}</span>
+                    <span className="ml-2 text-[13px] text-muted-foreground">{a.title}</span>
+                  </span>
+                  <span className="tnum shrink-0 text-[11px] font-semibold text-[#8a6608]">
+                    {a.deadline}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          eyebrow="Needs attention"
+          title="High priority notices"
+          icon={Megaphone}
+          tone="red"
+          action={
+            <Link
+              to="/announcements"
+              className="text-[13px] font-medium text-primary hover:underline"
+            >
+              View all
+            </Link>
+          }
+        >
+          {highPriority.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">Nothing urgent right now.</p>
+          ) : (
+            <ul className="divide-y divide-ink/10">
+              {highPriority.slice(0, 4).map((a) => (
+                <li key={a.id} className="py-2.5 first:pt-0">
+                  <div className="flex items-center gap-2">
+                    <StatusPill tone={PRIORITY_TONE[a.priority]}>{a.priority}</StatusPill>
+                    <span className="truncate text-[13px] font-medium">{a.title}</span>
+                  </div>
+                  <p className="mt-1 line-clamp-1 text-[12px] text-muted-foreground">{a.body}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_1.35fr]">
+        <Panel eyebrow="Estate" title="Room utilisation" icon={DoorOpen} tone="blue">
+          {rooms.isLoading ? (
+            <Skeleton className="h-20 w-full" />
+          ) : (
+            <StackedMeter
+              total={allRooms.length}
+              segments={[
+                { label: "booked", value: booked, tone: "blue" },
+                { label: "unavailable", value: unavailable, tone: "red" },
+                { label: "free", value: free, tone: "green" },
+              ]}
+            />
+          )}
+        </Panel>
+
+        <Panel
+          eyebrow="On campus"
+          title="Coming up"
+          icon={PartyPopper}
+          tone="violet"
+          action={
+            <Link to="/events" className="text-[13px] font-medium text-primary hover:underline">
+              View all
+            </Link>
+          }
+        >
+          {upcoming.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">No events scheduled.</p>
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {upcoming.slice(0, 4).map((e) => (
+                <li key={e.id}>
+                  <Link
+                    to="/events"
+                    className="block rounded-md border border-ink/12 p-3 transition-colors hover:border-ink/35 hover:bg-paper-deep/40"
+                  >
+                    <div className="truncate text-[13px] font-semibold">{e.name}</div>
+                    <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <CalendarDays className="h-3 w-3" />
+                      {e.date}
+                      <span className="text-ink/25">·</span>
+                      {e.venue}
+                    </div>
+                    <div className="mt-3">
+                      <Meter
+                        value={e.registered}
+                        max={e.capacity}
+                        size="sm"
+                        tone={e.registered >= e.capacity ? "amber" : "violet"}
+                      />
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
     </>
   );
 }

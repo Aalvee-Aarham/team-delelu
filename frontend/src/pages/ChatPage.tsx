@@ -1,24 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Send, RefreshCw, AlertCircle, Sparkles } from "lucide-react";
+import { ArrowRight, Send, Sparkles } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/axios";
 import { onCampusChange } from "@/hooks/useChangeStream";
 import { useAuth } from "@/context/AuthContext";
 import type { AgentResponse, ChangeEvent } from "@/lib/types";
+import { PageHeader } from "@/components/PageHeader";
+import { ChatTurn } from "@/components/ChatTurn";
+import type { Turn } from "@/components/ChatTurn";
+import { StatusPill } from "@/components/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ToolTrace } from "@/components/ToolTrace";
-
-interface Turn {
-  id: number;
-  question: string;
-  answer: string;
-  result: AgentResponse | null;
-  error?: string;
-  stale?: { collection: string; id: string } | null;
-  previous?: string;
-  refreshing?: boolean;
-}
 
 const STARTERS = [
   "When is my next class?",
@@ -103,116 +95,79 @@ export default function ChatPage() {
         )
       )
       .catch((err) =>
-        setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, error: apiErrorMessage(err), refreshing: false } : x)))
+        setTurns((t) =>
+          t.map((x) => (x.id === turn.id ? { ...x, error: apiErrorMessage(err), refreshing: false } : x))
+        )
       );
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight">AI Agent</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Reads live campus data on every question. Signed in as {user?.name} ({user?.role}).
-        </p>
-      </div>
+    <>
+      <PageHeader
+        eyebrow="Assistant"
+        title="AI Agent"
+        subtitle="Reads live campus data on every question through real tool calls, and refuses actions your role cannot perform."
+        action={
+          <StatusPill tone={user?.role === "admin" ? "violet" : "green"}>
+            {user?.role} · {user?.name}
+          </StatusPill>
+        }
+      />
 
-      <div className="flex-1 space-y-5 overflow-y-auto pr-1">
-        {turns.length === 0 && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="h-4 w-4 text-primary" /> Try asking
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="flex h-[calc(100dvh-15rem)] min-h-[460px] flex-col overflow-hidden rounded-lg border border-ink/12 bg-paper-deep/35">
+        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+          {turns.length === 0 && (
+            <div className="rounded-lg border border-ink/12 bg-card p-6">
+              <div className="mb-1 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet" />
+                <span className="text-[15px] font-semibold tracking-tight">Try asking</span>
+              </div>
+              <p className="mb-5 text-[13px] text-muted-foreground">
+                Every answer records the records it came from, so it can tell you when it goes stale.
+              </p>
 
-        {turns.map((turn) => (
-          <div key={turn.id} className="animate-fade-up space-y-2">
-            <div className="flex justify-end">
-              <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-primary-foreground">
-                {turn.question}
+              <div className="grid gap-2 sm:grid-cols-2">
+                {STARTERS.map((starter) => (
+                  <button
+                    key={starter}
+                    type="button"
+                    onClick={() => send(starter)}
+                    className="group flex items-start justify-between gap-3 rounded-md border border-ink/12 bg-paper-deep/50 px-3.5 py-3 text-left text-[13px] leading-snug text-muted-foreground transition-colors hover:border-ink/35 hover:bg-card hover:text-foreground"
+                  >
+                    {starter}
+                    <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
+                  </button>
+                ))}
               </div>
             </div>
+          )}
 
-            <div className="flex justify-start">
-              <div
-                className={`max-w-[85%] rounded-2xl rounded-bl-sm border px-4 py-3 text-sm transition-all ${
-                  turn.stale ? "border-warn/50 bg-warn/5" : "border-border bg-card"
-                }`}
-              >
-                {turn.error ? (
-                  <div className="flex items-start gap-2 text-destructive">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    {turn.error}
-                  </div>
-                ) : !turn.answer ? (
-                  <div className="flex gap-1 py-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
-                  </div>
-                ) : (
-                  <>
-                    {turn.previous && (
-                      <div className="mb-2 rounded-lg border border-border bg-background/60 p-2 text-xs text-muted-foreground line-through decoration-destructive/60">
-                        {turn.previous}
-                      </div>
-                    )}
+          {turns.map((turn) => (
+            <ChatTurn key={turn.id} turn={turn} onRefresh={refresh} />
+          ))}
+          <div ref={bottomRef} />
+        </div>
 
-                    <div className={`whitespace-pre-wrap leading-relaxed ${turn.stale ? "text-muted-foreground line-through decoration-warn/60" : ""}`}>
-                      {turn.answer}
-                    </div>
-
-                    {turn.stale && (
-                      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2">
-                        <span className="text-xs text-warn">
-                          This changed while you were reading — {turn.stale.collection} {turn.stale.id} was just edited.
-                        </span>
-                        <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => refresh(turn)} disabled={turn.refreshing}>
-                          <RefreshCw className={`h-3 w-3 ${turn.refreshing ? "animate-spin" : ""}`} />
-                          {turn.refreshing ? "Re-checking…" : "Refresh answer"}
-                        </Button>
-                      </div>
-                    )}
-
-                    {turn.result && <ToolTrace result={turn.result} />}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-        <div ref={bottomRef} />
+        <form
+          className="flex gap-2 border-t border-ink/12 bg-card p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(input);
+          }}
+        >
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about classes, rooms, events, deadlines…"
+            disabled={ask.isPending}
+            aria-label="Message the agent"
+          />
+          <Button type="submit" disabled={ask.isPending || !input.trim()}>
+            <Send />
+            Send
+          </Button>
+        </form>
       </div>
-
-      <form
-        className="mt-4 flex gap-2 border-t border-border pt-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(input);
-        }}
-      >
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about classes, rooms, events, deadlines…"
-          disabled={ask.isPending}
-        />
-        <Button type="submit" disabled={ask.isPending || !input.trim()} className="gap-2">
-          <Send className="h-4 w-4" />
-          Send
-        </Button>
-      </form>
-    </div>
+    </>
   );
 }

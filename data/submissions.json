@@ -1,0 +1,74 @@
+[
+  {
+    "id": "sub-asgn-004-20-00000",
+    "assignment_id": "asgn-004",
+    "assignment_title": "Lab Report 1: Data Preprocessing with WEKA",
+    "course_id": "crs-4142",
+    "course_code": "CSE 4142",
+    "student_id": "20-00000",
+    "student_name": "Demo Student",
+    "text": "Ran the full preprocessing chain on the adult census set: ReplaceMissingValues for the two nominal gaps, Discretize with 10 equal-frequency bins on age and hours-per-week, then Normalize. Attached the ARFF diff and a screenshot of the filtered attribute panel.",
+    "attachments": [
+      {
+        "url": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80",
+        "name": "weka-attribute-panel.png",
+        "mime": "image/png",
+        "size": 184320,
+        "provider": "link",
+        "kind": "image"
+      }
+    ],
+    "submitted_at": "2026-09-03T14:12:00.000Z",
+    "late": false,
+    "status": "accepted",
+    "grade": 9,
+    "feedback": "Clean pipeline and the binning choice is well justified. Half a mark off for not reporting the class distribution after discretisation.",
+    "reviewed_by": "Demo Admin",
+    "reviewed_at": "2026-09-04T09:30:00.000Z"
+  },
+  {
+    "id": "sub-asgn-006-20-40532",
+    "assignment_id": "asgn-006",
+    "assignment_title": "Problem Set 1: DFA and NFA Construction",
+    "course_id": "crs-4129",
+    "course_code": "CSE 4129",
+    "student_id": "20-40532",
+    "student_name": "Sakibul Hassan",
+    "text": "All six automata drawn and the subset construction for problem 4 written out state by state. Problem 6 minimisation gave me 5 states, down from 8.",
+    "attachments": [
+      {
+        "url": "https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1200&q=80",
+        "name": "dfa-worksheet.jpg",
+        "mime": "image/jpeg",
+        "size": 262144,
+        "provider": "link",
+        "kind": "image"
+      }
+    ],
+    "submitted_at": "2026-09-04T06:45:00.000Z",
+    "late": false,
+    "status": "submitted",
+    "grade": null,
+    "feedback": "",
+    "reviewed_by": "",
+    "reviewed_at": ""
+  },
+  {
+    "id": "sub-asgn-006-20-40511",
+    "assignment_id": "asgn-006",
+    "assignment_title": "Problem Set 1: DFA and NFA Construction",
+    "course_id": "crs-4129",
+    "course_code": "CSE 4129",
+    "student_id": "20-40511",
+    "student_name": "Farhan Ahmed",
+    "text": "Submitting problems 1 through 5. Problem 6 minimisation is still wrong — I get 6 states and cannot find the redundant pair. Requesting a look before final marking.",
+    "attachments": [],
+    "submitted_at": "2026-09-04T11:20:00.000Z",
+    "late": false,
+    "status": "returned",
+    "grade": null,
+    "feedback": "Your states q3 and q5 have identical transition rows on both symbols — merge them and you land on 5. Resubmit by Sunday.",
+    "reviewed_by": "Demo Admin",
+    "reviewed_at": "2026-09-04T13:05:00.000Z"
+  }
+]

@@ -8,6 +8,8 @@
 - bcryptjs 2 — password hashing
 - cors 2 — cross-origin for the frontend dev server
 - dotenv 16 — load `.env` in development
+- multer 2 — multipart parsing for assignment submissions and event cover uploads
+- uploadthing 7 — UTApi server SDK, used for admin event cover images
 - tsx 4 (dev) — run the TypeScript backend without a build step
 - typescript 5 (dev) — type checking
 

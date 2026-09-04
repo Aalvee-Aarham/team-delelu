@@ -20,6 +20,9 @@ const createSchema = z.object({
   registered: z.number().int().min(0).default(0),
   registrations: z.array(z.object({ student_id: z.string(), name: z.string() })).default([]),
   status: z.enum(["upcoming", "ongoing", "completed", "cancelled", "full"]),
+  image_url: z.string().default(""),
+  image_credit: z.string().default(""),
+  image_provider: z.enum(["unsplash", "uploadthing", "cloudinary", "local"]).default("unsplash"),
 });
 
 const updateSchema = createSchema.partial();
