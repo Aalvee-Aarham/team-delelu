@@ -8,6 +8,9 @@ export interface AuthPayload {
   student_id: string;
   name: string;
   section: string;
+  year?: number;
+  semester?: number;
+  department?: string;
   role: "student" | "admin";
 }
 

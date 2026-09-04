@@ -25,6 +25,10 @@ export const schedulesRouter = buildCrudRouter({
     const filter: Record<string, unknown> = {};
     if (q.day) filter.day = q.day;
     if (q.course) filter.course = q.course;
+    if (q.courses) {
+      const list = String(q.courses).split(",").map((c) => c.trim()).filter(Boolean);
+      if (list.length > 0) filter.course = { $in: list };
+    }
     if (q.section) filter.section = q.section;
     return filter;
   },

@@ -10,11 +10,23 @@ import { Label } from "@/components/ui/label";
 
 export default function RegisterPage() {
   const { register } = useAuth();
-  const [form, setForm] = useState({ name: "", email: "", password: "", student_id: "", section: "B" });
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    student_id: "",
+    section: "B",
+    department: "CSE",
+    year: 4,
+    semester: 1,
+  });
   const [busy, setBusy] = useState(false);
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm((f) => ({
+      ...f,
+      [key]: key === "year" || key === "semester" ? parseInt(e.target.value, 10) : e.target.value,
+    }));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +44,7 @@ export default function RegisterPage() {
     <AuthLayout
       eyebrow="Create account"
       title="Join CampusOS"
-      subtitle="Register once, then everything on campus follows your section and student ID."
+      subtitle="Register once, then courses, timetable and coursework follow your department, year, semester and student ID."
       footer={
         <>
           Already registered?{" "}
@@ -42,7 +54,7 @@ export default function RegisterPage() {
         </>
       }
     >
-      <form onSubmit={submit} className="space-y-5">
+      <form onSubmit={submit} className="space-y-4">
         <div className="grid gap-2">
           <Label htmlFor="name">Full name</Label>
           <Input id="name" autoComplete="name" value={form.name} onChange={set("name")} required />
@@ -58,6 +70,50 @@ export default function RegisterPage() {
               onChange={set("student_id")}
               required
             />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="department">Department</Label>
+            <select
+              id="department"
+              value={form.department}
+              onChange={set("department")}
+              className="flex h-9 w-full rounded-md border border-ink/20 bg-card px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="CSE">CSE (Computer Science)</option>
+              <option value="EEE">EEE (Electrical)</option>
+              <option value="CE">CE (Civil)</option>
+              <option value="ME">ME (Mechanical)</option>
+              <option value="IPE">IPE (Industrial)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="grid gap-2">
+            <Label htmlFor="year">Year</Label>
+            <select
+              id="year"
+              value={form.year}
+              onChange={set("year")}
+              className="flex h-9 w-full rounded-md border border-ink/20 bg-card px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value={1}>1st Year</option>
+              <option value={2}>2nd Year</option>
+              <option value={3}>3rd Year</option>
+              <option value={4}>4th Year</option>
+            </select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="semester">Semester</Label>
+            <select
+              id="semester"
+              value={form.semester}
+              onChange={set("semester")}
+              className="flex h-9 w-full rounded-md border border-ink/20 bg-card px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value={1}>1st Sem</option>
+              <option value={2}>2nd Sem</option>
+            </select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="section">Section</Label>

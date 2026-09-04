@@ -81,19 +81,17 @@ async function seedRoomsAndBookings() {
 }
 
 async function seedDemoUsers() {
-  const count = await User.countDocuments();
-  if (count > 0) {
-    console.log(`[seed] users already seeded (${count} docs)`);
-    return;
-  }
   const passwordHash = await bcrypt.hash("campus123", 10);
-  await User.insertMany([
+  const demoUsers = [
     {
       student_id: "20-00000",
       name: "Demo Student",
       email: "student@campusos.edu",
       passwordHash,
       section: "B",
+      year: 4,
+      semester: 1,
+      department: "CSE",
       role: "student",
     },
     {
@@ -102,10 +100,39 @@ async function seedDemoUsers() {
       email: "admin@campusos.edu",
       passwordHash,
       section: "N/A",
+      year: 0,
+      semester: 0,
+      department: "CSE",
       role: "admin",
     },
-  ]);
-  console.log("[seed] users: inserted 2 demo accounts");
+    {
+      student_id: "20-40532",
+      name: "Sakibul Hassan",
+      email: "sakib@campusos.edu",
+      passwordHash,
+      section: "B",
+      year: 4,
+      semester: 1,
+      department: "CSE",
+      role: "student",
+    },
+    {
+      student_id: "20-40511",
+      name: "Farhan Ahmed",
+      email: "farhan@campusos.edu",
+      passwordHash,
+      section: "B",
+      year: 4,
+      semester: 1,
+      department: "CSE",
+      role: "student",
+    },
+  ];
+
+  for (const u of demoUsers) {
+    await User.findOneAndUpdate({ student_id: u.student_id }, { $setOnInsert: u }, { upsert: true, new: true });
+  }
+  console.log(`[seed] demo users ready (checked ${demoUsers.length} accounts)`);
 }
 
 export async function runSeed() {

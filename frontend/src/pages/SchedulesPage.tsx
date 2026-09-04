@@ -14,6 +14,7 @@ import type { Schedule } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isCourseInStudentSemester } from "@/lib/course.utils";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
 
@@ -36,17 +37,32 @@ export default function SchedulesPage() {
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Schedule | null>(null);
+  const [scope, setScope] = useState<string>("my");
 
   const { data, isLoading } = useResourceList<Schedule>("schedules", { day: day || undefined });
+  const { data: courses } = useResourceList<any>("courses");
   const { create, update, remove } = useResourceMutations<Schedule>("schedules", "Class");
 
-  const rows = useMemo(
-    () =>
-      [...(data ?? [])].sort(
-        (a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.start_time.localeCompare(b.start_time)
-      ),
-    [data]
+  const myCourses = useMemo(
+    () => (courses ?? []).filter((c: any) => c.enrolled?.includes(user?.student_id ?? "")),
+    [courses, user?.student_id]
   );
+  const myCourseCodes = useMemo(() => new Set(myCourses.map((c: any) => c.code)), [myCourses]);
+  const hasEnrolled = myCourseCodes.size > 0;
+  const activeScope = !isAdmin && hasEnrolled && scope === "my" ? "my" : scope === "my" && !hasEnrolled ? "all" : scope;
+
+  const rows = useMemo(() => {
+    let list = [...(data ?? [])];
+    if (!isAdmin && activeScope === "my") {
+      list = list.filter((s) => {
+        if (hasEnrolled) return myCourseCodes.has(s.course);
+        return isCourseInStudentSemester(s.course, user);
+      });
+    }
+    return list.sort(
+      (a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.start_time.localeCompare(b.start_time)
+    );
+  }, [data, isAdmin, activeScope, hasEnrolled, myCourseCodes, user]);
 
   const columns = [
     { key: "index", label: "#", className: "w-12" },
@@ -64,7 +80,11 @@ export default function SchedulesPage() {
       <PageHeader
         eyebrow="Academics"
         title="Class Schedule"
-        subtitle="The weekly timetable, Sunday to Thursday. Admins can add, edit and remove classes."
+        subtitle={
+          isAdmin
+            ? "The weekly timetable, Sunday to Thursday. Admins can add, edit and remove classes."
+            : `Weekly timetable for student ${user?.student_id ?? ""}. Filter by day or view full campus classes.`
+        }
         action={
           isAdmin && (
             <Button onClick={() => setCreating(true)}>
@@ -76,11 +96,23 @@ export default function SchedulesPage() {
       />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <FilterTabs
-          value={day}
-          onChange={setDay}
-          options={[{ value: "", label: "All days" }, ...DAYS.map((d) => ({ value: d, label: d }))]}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {!isAdmin && hasEnrolled && (
+            <FilterTabs
+              value={activeScope}
+              onChange={setScope}
+              options={[
+                { value: "my", label: "My timetable" },
+                { value: "all", label: "Full campus" },
+              ]}
+            />
+          )}
+          <FilterTabs
+            value={day}
+            onChange={setDay}
+            options={[{ value: "", label: "All days" }, ...DAYS.map((d) => ({ value: d, label: d }))]}
+          />
+        </div>
         <span className="eyebrow text-muted-foreground">
           {rows.length} {rows.length === 1 ? "class" : "classes"}
         </span>

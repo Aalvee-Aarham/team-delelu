@@ -77,12 +77,21 @@ export default function EventsPage() {
     setEditing(event);
   };
 
+  const myRegisteredCount = useMemo(
+    () => (data ?? []).filter((e) => e.registrations?.some((r) => r.student_id === user?.student_id)).length,
+    [data, user?.student_id]
+  );
+
   const rows = useMemo(
     () =>
       [...(data ?? [])]
-        .filter((e) => !status || e.status === status)
+        .filter((e) => {
+          if (!status) return true;
+          if (status === "registered") return e.registrations?.some((r) => r.student_id === user?.student_id);
+          return e.status === status;
+        })
         .sort((a, b) => a.date.localeCompare(b.date)),
-    [data, status]
+    [data, status, user?.student_id]
   );
 
   return (
@@ -90,7 +99,11 @@ export default function EventsPage() {
       <PageHeader
         eyebrow="Campus"
         title="Events"
-        subtitle="What is happening on campus, with live registration counts against capacity."
+        subtitle={
+          isAdmin
+            ? "Campus events management and capacity registration tracking."
+            : `Campus events directory. Signed in as ${user?.student_id ?? ""}. Register for hackathons and workshops.`
+        }
         action={
           isAdmin && (
             <Button onClick={openCreate}>
@@ -105,7 +118,11 @@ export default function EventsPage() {
         <FilterTabs
           value={status}
           onChange={setStatus}
-          options={[{ value: "", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s }))]}
+          options={[
+            { value: "", label: "All" },
+            ...(!isAdmin ? [{ value: "registered", label: "My events", count: myRegisteredCount }] : []),
+            ...STATUSES.map((s) => ({ value: s, label: s })),
+          ]}
         />
         <span className="eyebrow text-muted-foreground">
           {rows.length} {rows.length === 1 ? "event" : "events"}

@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { FormDialog } from "@/components/FormDialog";
 import type { FieldDef, FormValues } from "@/components/FormDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { FilterTabs } from "@/components/FilterTabs";
 import { EmptyState } from "@/components/EmptyState";
 import { CourseCard } from "@/components/CourseCard";
 import { ImagePicker } from "@/components/ImagePicker";
@@ -29,6 +30,8 @@ const FIELDS: FieldDef[] = [
   { name: "accent", label: "Accent colour", type: "select", options: ACCENTS },
 ];
 
+import { isCourseInStudentSemester } from "@/lib/course.utils";
+
 export default function CoursesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -52,10 +55,28 @@ export default function CoursesPage() {
     return map;
   }, [assignments]);
 
-  const rows = useMemo(
-    () => [...(data ?? [])].sort((a, b) => a.code.localeCompare(b.code)),
-    [data]
+  const semesterCount = useMemo(
+    () => (data ?? []).filter((c) => isCourseInStudentSemester(c.code, user)).length,
+    [data, user]
   );
+  const enrolledCount = useMemo(
+    () => (data ?? []).filter((c) => c.enrolled.includes(user?.student_id ?? "")).length,
+    [data, user?.student_id]
+  );
+
+  const [scope, setScope] = useState<string>("semester");
+
+  const rows = useMemo(() => {
+    let list = [...(data ?? [])];
+    if (!isAdmin) {
+      if (scope === "semester") {
+        list = list.filter((c) => isCourseInStudentSemester(c.code, user));
+      } else if (scope === "enrolled") {
+        list = list.filter((c) => c.enrolled.includes(user?.student_id ?? ""));
+      }
+    }
+    return list.sort((a, b) => a.code.localeCompare(b.code));
+  }, [data, isAdmin, scope, user]);
 
   const openCreate = () => {
     setCover("");
@@ -72,7 +93,11 @@ export default function CoursesPage() {
       <PageHeader
         eyebrow="Academics"
         title="Courses"
-        subtitle="Every course you are enrolled in. Open one for its stream, classwork and submissions."
+        subtitle={
+          isAdmin
+            ? "Every course offered on campus. Open one for its stream, classwork and submissions."
+            : `Curriculum and enrollment for ${user?.department ?? "CSE"} Year ${user?.year ?? 4}, Semester ${user?.semester ?? 1}.`
+        }
         action={
           isAdmin && (
             <Button onClick={openCreate}>
@@ -82,6 +107,29 @@ export default function CoursesPage() {
           )
         }
       />
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          value={scope}
+          onChange={setScope}
+          options={[
+            ...(!isAdmin
+              ? [
+                  {
+                    value: "semester",
+                    label: `Year ${user?.year ?? 4} Sem ${user?.semester ?? 1}`,
+                    count: semesterCount,
+                  },
+                  { value: "enrolled", label: "My enrolled", count: enrolledCount },
+                ]
+              : []),
+            { value: "all", label: "All courses", count: (data ?? []).length },
+          ]}
+        />
+        <span className="eyebrow text-muted-foreground">
+          {rows.length} {rows.length === 1 ? "course" : "courses"}
+        </span>
+      </div>
 
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

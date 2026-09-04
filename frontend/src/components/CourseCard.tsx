@@ -5,6 +5,8 @@ import { StatusPill } from "@/components/StatusPill";
 import { TONE_BAR, type Tone } from "@/lib/tone";
 import type { Course } from "@/lib/types";
 
+import { parseCourseCode } from "@/lib/course.utils";
+
 export function CourseCard({
   course,
   assignmentCount,
@@ -39,8 +41,22 @@ export function CourseCard({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/25 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-4">
-          <div className="text-[11px] font-semibold tracking-[0.09em] text-white/80 uppercase">
-            {course.code} · {course.section || course.term}
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold tracking-[0.09em] text-white/80 uppercase">
+            <span>{course.code}</span>
+            {parseCourseCode(course.code).levelLabel && (
+              <>
+                <span className="text-white/40">·</span>
+                <span className="rounded bg-white/15 px-1.5 py-0.5 text-[10px] text-white">
+                  {parseCourseCode(course.code).levelLabel}
+                </span>
+              </>
+            )}
+            {(course.section || course.term) && (
+              <>
+                <span className="text-white/40">·</span>
+                <span>{course.section || course.term}</span>
+              </>
+            )}
           </div>
           <h3 className="mt-1 line-clamp-2 text-[15px] leading-tight font-semibold text-white">
             {course.title}

@@ -40,6 +40,12 @@ export const assignmentsRouter = buildCrudRouter({
     if (q.status) filter.status = q.status;
     if (q.course) filter.course = q.course;
     if (q.course_id) filter.course_id = q.course_id;
+    if (q.courses) {
+      const list = String(q.courses).split(",").map((c) => c.trim()).filter(Boolean);
+      if (list.length > 0) {
+        filter.$or = [{ course_id: { $in: list } }, { course: { $in: list } }];
+      }
+    }
     if (q.due_before) filter.deadline = { $lte: q.due_before };
     return filter;
   },

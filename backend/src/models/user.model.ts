@@ -6,6 +6,9 @@ export interface UserDoc {
   email: string;
   passwordHash: string;
   section: string;
+  year: number;
+  semester: number;
+  department: string;
   role: "student" | "admin";
   createdAt: Date;
 }
@@ -16,6 +19,9 @@ const userSchema = new Schema<UserDoc>({
   email: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   section: { type: String, required: true },
+  year: { type: Number, default: 4 },
+  semester: { type: Number, default: 1 },
+  department: { type: String, default: "CSE" },
   role: { type: String, enum: ["student", "admin"], required: true },
   createdAt: { type: Date, default: Date.now },
 });

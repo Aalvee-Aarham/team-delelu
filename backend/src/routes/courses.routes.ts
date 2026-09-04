@@ -37,6 +37,7 @@ export const coursesRouter: Router = buildCrudRouter({
     if (q.archived === "true") filter.archived = true;
     if (q.archived === "false") filter.archived = false;
     if (q.code) filter.code = q.code;
+    if (q.student_id) filter.enrolled = q.student_id;
     return filter;
   },
 });

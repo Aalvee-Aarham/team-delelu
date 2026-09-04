@@ -64,7 +64,12 @@ export function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () =>
             <div className="mt-0.5 flex items-center gap-1 text-[11px] text-rail-soft">
               <RoleIcon className="h-3 w-3" />
               <span className="capitalize">{user?.role}</span>
-              {user?.student_id && <span className="truncate">· {user.student_id}</span>}
+              {user?.student_id && (
+                <span className="truncate">
+                  · {user.student_id}
+                  {user.role === "student" && user.year ? ` (Y${user.year}S${user.semester})` : ""}
+                </span>
+              )}
             </div>
           </div>
         </div>

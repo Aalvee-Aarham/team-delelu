@@ -15,6 +15,9 @@ const registerSchema = z.object({
   password: z.string().min(6),
   student_id: z.string().min(1),
   section: z.string().min(1),
+  year: z.coerce.number().int().min(1).max(5).default(4),
+  semester: z.coerce.number().int().min(1).max(3).default(1),
+  department: z.string().default("CSE"),
 });
 
 const loginSchema = z.object({
@@ -26,12 +29,24 @@ function signToken(payload: AuthPayload) {
   return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions);
 }
 
-function toPublicUser(user: { student_id: string; name: string; email: string; section: string; role: string }) {
+function toPublicUser(user: {
+  student_id: string;
+  name: string;
+  email: string;
+  section: string;
+  year?: number;
+  semester?: number;
+  department?: string;
+  role: string;
+}) {
   return {
     student_id: user.student_id,
     name: user.name,
     email: user.email,
     section: user.section,
+    year: user.year ?? 4,
+    semester: user.semester ?? 1,
+    department: user.department ?? "CSE",
     role: user.role,
   };
 }
@@ -50,6 +65,9 @@ authRouter.post("/register", async (req, res, next) => {
       passwordHash,
       student_id: body.student_id,
       section: body.section,
+      year: body.year,
+      semester: body.semester,
+      department: body.department.toUpperCase(),
       role: "student",
     });
     const token = signToken({
@@ -57,6 +75,9 @@ authRouter.post("/register", async (req, res, next) => {
       student_id: user.student_id,
       name: user.name,
       section: user.section,
+      year: user.year,
+      semester: user.semester,
+      department: user.department,
       role: user.role,
     });
     res.status(201).json({ token, user: toPublicUser(user) });
@@ -81,6 +102,9 @@ authRouter.post("/login", async (req, res, next) => {
       student_id: user.student_id,
       name: user.name,
       section: user.section,
+      year: user.year,
+      semester: user.semester,
+      department: user.department,
       role: user.role,
     });
     res.json({ token, user: toPublicUser(user) });

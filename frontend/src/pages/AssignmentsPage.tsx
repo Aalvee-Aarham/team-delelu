@@ -19,6 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
+import { isCourseInStudentSemester } from "@/lib/course.utils";
+
 const STATUSES = ["pending", "submitted", "graded", "late"];
 
 const FIELDS: FieldDef[] = [
@@ -43,12 +45,21 @@ export default function AssignmentsPage() {
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [deleting, setDeleting] = useState<Assignment | null>(null);
 
-  const { data, isLoading } = useResourceList<Assignment>("assignments", {
-    status: status || undefined,
-  });
+  const [scope, setScope] = useState<string>("my");
+
+  const { data, isLoading } = useResourceList<Assignment>("assignments");
   const { data: courses } = useResourceList<Course>("courses");
   const { data: submissions } = useSubmissions();
   const { create, update, remove } = useResourceMutations<Assignment>("assignments", "Assignment");
+
+  const myEnrolledCourses = useMemo(
+    () => (courses ?? []).filter((c) => c.enrolled.includes(user?.student_id ?? "")),
+    [courses, user?.student_id]
+  );
+  const myCourseIds = useMemo(() => new Set(myEnrolledCourses.map((c) => c.id)), [myEnrolledCourses]);
+  const myCourseCodes = useMemo(() => new Set(myEnrolledCourses.map((c) => c.code)), [myEnrolledCourses]);
+  const hasEnrolled = myEnrolledCourses.length > 0;
+  const activeScope = !isAdmin && hasEnrolled && scope === "my" ? "my" : scope === "my" && !hasEnrolled ? "all" : scope;
 
   const fields = useMemo(
     () =>
@@ -80,9 +91,39 @@ export default function AssignmentsPage() {
     return map;
   }, [submissions]);
 
+  // Filter assignments by scope (my enrolled courses vs all) and status
+  const filteredAssignments = useMemo(() => {
+    let list = [...(data ?? [])];
+
+    // 1. Course scope
+    if (!isAdmin && activeScope === "my") {
+      list = list.filter((a) => {
+        if (hasEnrolled) {
+          return myCourseIds.has(a.course_id) || myCourseCodes.has(a.course);
+        }
+        return isCourseInStudentSemester(a.course, user);
+      });
+    }
+
+    // 2. Status filter
+    if (status) {
+      list = list.filter((a) => {
+        const mine = mySubmission.get(a.id);
+        if (status === "submitted") return mine && (mine.status === "submitted" || mine.status === "accepted");
+        if (status === "graded") return mine && mine.status === "accepted";
+        if (status === "returned") return mine && mine.status === "returned";
+        if (status === "overdue") return !mine && daysUntil(a.deadline) < 0;
+        if (status === "pending") return !mine && daysUntil(a.deadline) >= 0;
+        return true;
+      });
+    }
+
+    return list;
+  }, [data, isAdmin, activeScope, status, myCourseIds, myCourseCodes, mySubmission]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, Assignment[]>();
-    for (const a of [...(data ?? [])].sort((x, y) => x.deadline.localeCompare(y.deadline))) {
+    for (const a of [...filteredAssignments].sort((x, y) => x.deadline.localeCompare(y.deadline))) {
       const key = a.course_id || a.course;
       const list = map.get(key) ?? [];
       list.push(a);
@@ -93,16 +134,20 @@ export default function AssignmentsPage() {
       const soonestB = b[1][0]?.deadline ?? "";
       return soonestA.localeCompare(soonestB);
     });
-  }, [data]);
+  }, [filteredAssignments]);
 
-  const total = (data ?? []).length;
+  const total = filteredAssignments.length;
 
   return (
     <>
       <PageHeader
         eyebrow="Academics"
         title="Assignments"
-        subtitle="Grouped by course, each course ordered with the soonest deadline first. Open one to hand in your work."
+        subtitle={
+          isAdmin
+            ? "Manage all coursework across courses and track student submissions."
+            : `Coursework for student ${user?.student_id ?? ""}. Hand in work and track deadlines.`
+        }
         action={
           isAdmin && (
             <Button onClick={() => setCreating(true)}>
@@ -114,11 +159,29 @@ export default function AssignmentsPage() {
       />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <FilterTabs
-          value={status}
-          onChange={setStatus}
-          options={[{ value: "", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s }))]}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          {!isAdmin && hasEnrolled && (
+            <FilterTabs
+              value={activeScope}
+              onChange={setScope}
+              options={[
+                { value: "my", label: "My courses" },
+                { value: "all", label: "All courses" },
+              ]}
+            />
+          )}
+          <FilterTabs
+            value={status}
+            onChange={setStatus}
+            options={[
+              { value: "", label: "All" },
+              { value: "pending", label: "Due" },
+              { value: "submitted", label: "Submitted" },
+              { value: "graded", label: "Graded" },
+              { value: "overdue", label: "Overdue" },
+            ]}
+          />
+        </div>
         <span className="eyebrow text-muted-foreground">
           {total} {total === 1 ? "assignment" : "assignments"} in {grouped.length}{" "}
           {grouped.length === 1 ? "course" : "courses"}

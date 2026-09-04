@@ -36,6 +36,7 @@ export const eventsRouter: Router = buildCrudRouter({
     const filter: Record<string, unknown> = {};
     if (q.status) filter.status = q.status;
     if (q.date) filter.date = q.date;
+    if (q.student_id) filter["registrations.student_id"] = q.student_id;
     return filter;
   },
 });

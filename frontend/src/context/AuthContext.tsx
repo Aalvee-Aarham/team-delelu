@@ -7,7 +7,16 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (payload: { name: string; email: string; password: string; student_id: string; section: string }) => Promise<void>;
+  register: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    student_id: string;
+    section: string;
+    year?: number;
+    semester?: number;
+    department?: string;
+  }) => Promise<void>;
   logout: () => void;
 }
 
