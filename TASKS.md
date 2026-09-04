@@ -103,6 +103,7 @@ Order is rubric-first. Commit after every `[x]` as `[task-id] description`.
 
 - [x] **T23** Provider chain — Groq key1 → key2 → Gemini key1 → key2, advancing on 429/5xx/network/timeout via `AbortController`; OpenAI↔Gemini tool-schema adapter; conversation replayed intact across a switch.
   ✓ Done when: `GET /api/agent/health` reports all four links, and with both Groq keys set to a bogus value the chat still answers correctly via Gemini and reports `provider:"gemini"`.
+  **Post-submission fix (see CHANGES.md):** the "replayed intact" claim was true for content/text but not for tool_calls — Gemini rejected any replayed functionCall lacking the exact thoughtSignature it originally issued, so a mid-loop failover into Gemini (or even a second Gemini-served round, since the signature was discarded) surfaced as "Internal server error". Now fixed: Gemini's own signature is captured and replayed; a foreign-provider tool-call turn is summarized as text instead of forged.
 
 - [x] **T24** `POST /api/agent/chat` — multi-round tool loop (max 6), system prompt carrying today's date, the user's identity/section/role, and refusal + clarification policy.
   ✓ Done when: *"When is my next class?"* returns a correct course, time, and room traceable to a `get_schedule` tool call in the response payload.
