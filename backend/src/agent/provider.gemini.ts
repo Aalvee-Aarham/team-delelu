@@ -1,8 +1,7 @@
 import { toGeminiTools } from "./tools.schema";
 import { ChatMessage, Provider, ProviderError, ProviderReply, ToolCall } from "./provider.types";
 
-const GEMINI_MODEL = "gemini-3.8-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 interface GeminiPart {
   text?: string;
@@ -15,13 +14,17 @@ function toGeminiContents(messages: ChatMessage[]) {
   for (const m of messages) {
     if (m.role === "system") continue;
     if (m.role === "tool") {
-      let parsed: Record<string, unknown>;
+      let parsed: unknown;
       try {
-        parsed = JSON.parse(m.content) as Record<string, unknown>;
+        parsed = JSON.parse(m.content);
       } catch {
-        parsed = { result: m.content };
+        parsed = m.content;
       }
-      contents.push({ role: "user", parts: [{ functionResponse: { name: m.name ?? "tool", response: parsed } }] });
+      const response =
+        parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)
+          ? (parsed as Record<string, unknown>)
+          : { result: parsed };
+      contents.push({ role: "user", parts: [{ functionResponse: { name: m.name ?? "tool", response } }] });
       continue;
     }
     if (m.role === "assistant" && m.tool_calls && m.tool_calls.length > 0) {
@@ -36,14 +39,14 @@ function toGeminiContents(messages: ChatMessage[]) {
   return contents;
 }
 
-export function createGeminiProvider(apiKey: string, label: string): Provider {
+export function createGeminiProvider(apiKey: string, label: string, model: string): Provider {
   return {
     label,
     provider: "gemini",
-    model: GEMINI_MODEL,
+    model,
     async complete(messages: ChatMessage[], signal: AbortSignal): Promise<ProviderReply> {
       const system = messages.find((m) => m.role === "system");
-      const res = await fetch(GEMINI_URL, {
+      const res = await fetch(`${GEMINI_BASE}/${model}:generateContent`, {
         method: "POST",
         signal,
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },

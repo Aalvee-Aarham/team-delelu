@@ -35,16 +35,27 @@ function countRows(data: unknown): number {
   return 0;
 }
 
+const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 function buildSystemPrompt(auth: AuthPayload): string {
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
-  const dayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getUTCDay()];
+  const dayName = WEEKDAY_NAMES[now.getUTCDay()];
   const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+
+  const calendar = Array.from({ length: 8 }, (_, i) => {
+    const d = new Date(now.getTime() + i * 86400000);
+    const label = i === 0 ? " (today)" : i === 1 ? " (tomorrow)" : "";
+    return `  ${WEEKDAY_NAMES[d.getUTCDay()]} = ${d.toISOString().slice(0, 10)}${label}`;
+  }).join("\n");
 
   return [
     "You are CampusOS, the assistant for a university campus system at AUST.",
     "",
     `Today is ${dayName}, ${today}. Tomorrow is ${tomorrow}.`,
+    "Never compute dates yourself. Use exactly this calendar for the next eight days:",
+    calendar,
+    `"This week" means from today (${today}) through the next seven days inclusive.`,
     "The academic week runs Sunday to Thursday. Friday and Saturday are the weekend and have no classes.",
     "All times are 24-hour HH:MM. All dates are ISO YYYY-MM-DD.",
     "",

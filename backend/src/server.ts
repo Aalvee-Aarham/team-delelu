@@ -42,9 +42,19 @@ async function start() {
   await mongoose.connect(env.MONGODB_URI, { dbName: "campusos" });
   console.log("MongoDB connected");
   await runSeed();
-  app.listen(env.PORT, () => {
+  const server = app.listen(env.PORT, () => {
     console.log(`CampusOS backend listening on port ${env.PORT}`);
   });
+
+  const shutdown = () => {
+    server.close(() => {
+      mongoose.connection.close(false).finally(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(0), 3000).unref();
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 start().catch((err) => {

@@ -6,8 +6,9 @@ import { ChatMessage, Provider, ProviderError, ProviderReply } from "./provider.
 export const CHAIN: Provider[] = [
   createGroqProvider(env.GROQ_API_KEY_1, "groq#1"),
   createGroqProvider(env.GROQ_API_KEY_2, "groq#2"),
-  createGeminiProvider(env.GEMINI_API_KEY_1, "gemini#1"),
-  createGeminiProvider(env.GEMINI_API_KEY_2, "gemini#2"),
+  createGeminiProvider(env.GEMINI_API_KEY_1, "gemini#1", "gemini-3.8-flash"),
+  createGeminiProvider(env.GEMINI_API_KEY_2, "gemini#2", "gemini-3.5-flash"),
+  createGeminiProvider(env.GEMINI_API_KEY_1, "gemini#3", "gemini-flash-latest"),
 ];
 
 export interface ChainReply extends ProviderReply {

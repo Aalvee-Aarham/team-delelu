@@ -105,23 +105,23 @@ export const TOOLS: ToolDef[] = [
   {
     name: "book_room",
     description:
-      "Book a room for the current user. Fails if the room is occupied by a booking or a class. Only call this when you have a specific room, date, start time, end time and purpose. If any of those is missing or vague, ask the user instead of guessing.",
+      "Book a room for the current user. Fails if the room is occupied by a booking or a class. Call this once you know the room, date, start time and end time. Purpose is optional — do not ask for it, it defaults sensibly. If the ROOM, DATE or TIME is missing or vague, ask the user instead of guessing.",
     parameters: obj(
       {
         room_number: str("Room code, e.g. '7A02'"),
         date: str("ISO date YYYY-MM-DD"),
         start_time: str("24h HH:MM"),
         end_time: str("24h HH:MM"),
-        purpose: str("Reason for the booking"),
+        purpose: str("Optional reason for the booking"),
       },
-      ["room_number", "date", "start_time", "end_time", "purpose"]
+      ["room_number", "date", "start_time", "end_time"]
     ),
     args: z.object({
       room_number: z.string(),
       date: z.string(),
       start_time: z.string(),
       end_time: z.string(),
-      purpose: z.string(),
+      purpose: z.string().optional(),
     }),
     adminOnly: false,
   },

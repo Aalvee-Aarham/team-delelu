@@ -20,6 +20,17 @@ export interface ToolResult {
   provenance: Provenance[];
 }
 
+const PROJECTION = {
+  schedule: { _id: 0, id: 1, course: 1, title: 1, day: 1, start_time: 1, end_time: 1, room: 1, instructor: 1, section: 1 },
+  assignment: { _id: 0, id: 1, course: 1, title: 1, deadline: 1, status: 1, marks: 1, submission_platform: 1 },
+  announcement: { _id: 0, id: 1, title: 1, body: 1, date: 1, priority: 1, posted_by: 1, expires: 1 },
+  event: { _id: 0, id: 1, name: 1, description: 1, date: 1, end_date: 1, start_time: 1, end_time: 1, venue: 1, organizer: 1, capacity: 1, registered: 1, status: 1 },
+} as const;
+
+function truncate(text: string, max = 160): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
 function prov(collection: string, docs: { id: string }[]): Provenance[] {
   return docs.map((d) => ({ collection, id: d.id }));
 }
@@ -63,7 +74,7 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
       if (args.day) filter.day = args.day;
       if (args.course) filter.course = { $regex: args.course, $options: "i" };
       if (args.section) filter.section = args.section;
-      const docs = await Schedule.find(filter).sort({ day: 1, start_time: 1 });
+      const docs = await Schedule.find(filter, PROJECTION.schedule).sort({ day: 1, start_time: 1 }).lean();
       return { ok: true, data: docs, provenance: prov("schedules", docs) };
     }
 
@@ -72,7 +83,7 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
       if (args.status) filter.status = args.status;
       if (args.course) filter.course = { $regex: args.course, $options: "i" };
       if (args.due_before) filter.deadline = { $lte: args.due_before };
-      const docs = await Assignment.find(filter).sort({ deadline: 1 });
+      const docs = await Assignment.find(filter, PROJECTION.assignment).sort({ deadline: 1 }).lean();
       return { ok: true, data: docs, provenance: prov("assignments", docs) };
     }
 
@@ -80,7 +91,7 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
       const filter: Record<string, unknown> = {};
       if (args.priority) filter.priority = args.priority;
       if (args.active_only) filter.expires = { $gte: new Date().toISOString().slice(0, 10) };
-      const docs = await Announcement.find(filter).sort({ date: -1 });
+      const docs = await Announcement.find(filter, PROJECTION.announcement).sort({ date: -1 }).lean();
       return { ok: true, data: docs, provenance: prov("announcements", docs) };
     }
 
@@ -88,8 +99,9 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
       const filter: Record<string, unknown> = {};
       if (args.status) filter.status = args.status;
       if (args.date) filter.date = args.date;
-      const docs = await Event.find(filter).sort({ date: 1 });
-      return { ok: true, data: docs, provenance: prov("events", docs) };
+      const docs = await Event.find(filter, PROJECTION.event).sort({ date: 1 }).lean();
+      const slim = docs.map((d) => ({ ...d, description: truncate(d.description) }));
+      return { ok: true, data: slim, provenance: prov("events", docs) };
     }
 
     case "get_rooms": {
@@ -98,7 +110,16 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
       if (args.min_capacity) filter.capacity = { $gte: args.min_capacity };
       if (args.equipment && (args.equipment as string[]).length > 0) filter.equipment = { $all: args.equipment };
       const docs = await Room.find(filter).sort({ room_number: 1 });
-      return { ok: true, data: await attachBookings(docs), provenance: prov("rooms", docs) };
+      const withBookings = await attachBookings(docs);
+      const slim = withBookings.map((r) => ({
+        room_number: r.room_number,
+        type: r.type,
+        capacity: r.capacity,
+        equipment: r.equipment,
+        status: r.status,
+        bookings: r.bookings,
+      }));
+      return { ok: true, data: slim, provenance: prov("rooms", docs) };
     }
 
     case "find_available_rooms": {
@@ -151,7 +172,7 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
         date: args.date,
         start_time: args.start_time,
         end_time: args.end_time,
-        purpose: args.purpose,
+        purpose: args.purpose || `Booked by ${auth.name} via CampusOS`,
       });
       publishChange("rooms", "update", room.id);
       return { ok: true, data: booking, provenance: [{ collection: "rooms", id: room.id }] };
