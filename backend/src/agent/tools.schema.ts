@@ -184,6 +184,275 @@ export const TOOLS: ToolDef[] = [
     adminOnly: true,
   },
   {
+    name: "find_common_free_slot",
+    description:
+      "Find time windows where two or more students are all free on a given day, by cross-referencing their class timetables, then suggest a genuinely available room for that window. Use when asked to find a joint study time or a group meeting slot.",
+    parameters: obj(
+      {
+        sections: { type: "array", items: { type: "string" }, description: "Section labels of the students to cross-reference, e.g. ['A','B']. Include the current user's own section." },
+        day: str("Day of week: Sunday, Monday, Tuesday, Wednesday or Thursday"),
+        date: str("ISO date matching that day, needed to check room availability"),
+        min_duration_minutes: num("Minimum length of the free window required, default 30"),
+      },
+      ["sections", "day", "date"]
+    ),
+    args: z.object({
+      sections: z.array(z.string()).min(2),
+      day: z.string(),
+      date: z.string(),
+      min_duration_minutes: z.number().optional(),
+    }),
+    adminOnly: false,
+  },
+  {
+    name: "get_campus_analytics",
+    description:
+      "Get pre-computed campus-wide analytics: room utilization for a date, assignment status breakdown, event capacity vs registrations, bookings by hour of day, and weekly class load by day. Use when asked to analyze, summarize or visualize campus data.",
+    parameters: obj({ date: str("ISO date to compute room utilization for; defaults to today") }),
+    args: z.object({ date: z.string().optional() }),
+    adminOnly: false,
+  },
+  {
+    name: "create_schedule",
+    description:
+      "Add a new class to the timetable. Admin only. Checks the room is free at that day/time against the rest of the timetable before writing; if it is not, returns a conflict instead of creating a clash.",
+    parameters: obj(
+      {
+        course: str("Course code, e.g. 'CSE 4113'"),
+        title: str("Course title"),
+        day: str("Sunday, Monday, Tuesday, Wednesday or Thursday"),
+        start_time: str("24h HH:MM"),
+        end_time: str("24h HH:MM"),
+        room: str("Room number, e.g. '7A02'"),
+        instructor: str("Instructor name"),
+        section: str("Section label, e.g. 'B'"),
+      },
+      ["course", "title", "day", "start_time", "end_time", "room", "instructor", "section"]
+    ),
+    args: z.object({
+      course: z.string(),
+      title: z.string(),
+      day: z.string(),
+      start_time: z.string(),
+      end_time: z.string(),
+      room: z.string(),
+      instructor: z.string(),
+      section: z.string(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "create_room",
+    description: "Add a new room. Admin only.",
+    parameters: obj(
+      {
+        room_number: str("Room code, e.g. '7A02'"),
+        type: str("classroom, lab or seminar"),
+        capacity: num("Seating capacity"),
+        equipment: { type: "array", items: { type: "string" }, description: "e.g. ['projector','whiteboard']" },
+        floor: num("Floor number"),
+      },
+      ["room_number", "type", "capacity", "floor"]
+    ),
+    args: z.object({
+      room_number: z.string(),
+      type: z.string(),
+      capacity: z.number(),
+      equipment: z.array(z.string()).optional(),
+      floor: z.number(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "update_room",
+    description: "Edit a room's type, capacity, equipment, floor or status by room_number. Admin only.",
+    parameters: obj(
+      {
+        room_number: str("Room to edit"),
+        type: str("New type"),
+        capacity: num("New capacity"),
+        equipment: { type: "array", items: { type: "string" }, description: "New equipment list" },
+        floor: num("New floor"),
+        status: str("available or unavailable"),
+      },
+      ["room_number"]
+    ),
+    args: z.object({
+      room_number: z.string(),
+      type: z.string().optional(),
+      capacity: z.number().optional(),
+      equipment: z.array(z.string()).optional(),
+      floor: z.number().optional(),
+      status: z.string().optional(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "delete_room",
+    description: "Remove a room by room_number. Admin only.",
+    parameters: obj({ room_number: str("Room to remove") }, ["room_number"]),
+    args: z.object({ room_number: z.string() }),
+    adminOnly: true,
+  },
+  {
+    name: "create_event",
+    description: "Add a new campus event. Admin only.",
+    parameters: obj(
+      {
+        name: str("Event name"),
+        description: str("Event description"),
+        date: str("ISO date YYYY-MM-DD"),
+        start_time: str("24h HH:MM"),
+        end_time: str("24h HH:MM"),
+        end_date: str("ISO date YYYY-MM-DD, same as date for single-day events"),
+        venue: str("Where it is held"),
+        organizer: str("Who is organizing it"),
+        capacity: num("Maximum attendees"),
+      },
+      ["name", "description", "date", "start_time", "end_time", "end_date", "venue", "organizer", "capacity"]
+    ),
+    args: z.object({
+      name: z.string(),
+      description: z.string(),
+      date: z.string(),
+      start_time: z.string(),
+      end_time: z.string(),
+      end_date: z.string(),
+      venue: z.string(),
+      organizer: z.string(),
+      capacity: z.number(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "update_event",
+    description: "Edit an event by id. Admin only.",
+    parameters: obj(
+      {
+        id: str("Event id"),
+        name: str("New name"),
+        description: str("New description"),
+        date: str("New ISO date"),
+        start_time: str("New start HH:MM"),
+        end_time: str("New end HH:MM"),
+        venue: str("New venue"),
+        capacity: num("New capacity"),
+        status: str("upcoming, ongoing, completed, cancelled or full"),
+      },
+      ["id"]
+    ),
+    args: z.object({
+      id: z.string(),
+      name: z.string().optional(),
+      description: z.string().optional(),
+      date: z.string().optional(),
+      start_time: z.string().optional(),
+      end_time: z.string().optional(),
+      venue: z.string().optional(),
+      capacity: z.number().optional(),
+      status: z.string().optional(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "delete_event",
+    description: "Remove an event by id. Admin only.",
+    parameters: obj({ id: str("Event id") }, ["id"]),
+    args: z.object({ id: z.string() }),
+    adminOnly: true,
+  },
+  {
+    name: "create_assignment",
+    description: "Add a new assignment. Admin only.",
+    parameters: obj(
+      {
+        course: str("Course code"),
+        course_title: str("Course title"),
+        title: str("Assignment title"),
+        description: str("Assignment description"),
+        assigned_date: str("ISO date it was assigned"),
+        deadline: str("ISO date it is due"),
+        submission_platform: str("Where it is submitted, e.g. 'Google Classroom'"),
+        marks: num("Total marks"),
+      },
+      ["course", "course_title", "title", "description", "assigned_date", "deadline", "submission_platform", "marks"]
+    ),
+    args: z.object({
+      course: z.string(),
+      course_title: z.string(),
+      title: z.string(),
+      description: z.string(),
+      assigned_date: z.string(),
+      deadline: z.string(),
+      submission_platform: z.string(),
+      marks: z.number(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "update_assignment",
+    description: "Edit an assignment by id — deadline, status, marks, title or description. Admin only.",
+    parameters: obj(
+      {
+        id: str("Assignment id"),
+        title: str("New title"),
+        description: str("New description"),
+        deadline: str("New ISO deadline"),
+        status: str("pending, submitted, graded or late"),
+        marks: num("New marks"),
+      },
+      ["id"]
+    ),
+    args: z.object({
+      id: z.string(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      deadline: z.string().optional(),
+      status: z.string().optional(),
+      marks: z.number().optional(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "delete_assignment",
+    description: "Remove an assignment by id. Admin only.",
+    parameters: obj({ id: str("Assignment id") }, ["id"]),
+    args: z.object({ id: z.string() }),
+    adminOnly: true,
+  },
+  {
+    name: "bulk_reschedule_instructor",
+    description:
+      "Shift every class taught by one instructor later or earlier by a number of minutes, optionally limited to one day. Admin only. TWO-STEP: call with confirm=false (or omitted) first — this previews the affected classes and writes nothing. Only call again with confirm=true after the user has explicitly agreed to the preview.",
+    parameters: obj(
+      {
+        instructor: str("Instructor name to match"),
+        delta_minutes: num("Minutes to shift; negative shifts earlier"),
+        day: str("Optional: limit to one day"),
+        confirm: { type: "boolean", description: "false/omitted = preview only, no writes. true = perform the writes." },
+      },
+      ["instructor", "delta_minutes"]
+    ),
+    args: z.object({
+      instructor: z.string(),
+      delta_minutes: z.number(),
+      day: z.string().optional(),
+      confirm: z.boolean().optional(),
+    }),
+    adminOnly: true,
+  },
+  {
+    name: "bulk_clear_expired_announcements",
+    description:
+      "Delete every announcement whose expiry date has already passed (or passed a given cutoff date). Admin only. TWO-STEP: call with confirm=false (or omitted) first to preview which announcements would be deleted, writing nothing. Only call again with confirm=true after the user explicitly agrees.",
+    parameters: obj({
+      before_date: str("Optional ISO cutoff date; defaults to today"),
+      confirm: { type: "boolean", description: "false/omitted = preview only, no writes. true = perform the deletion." },
+    }),
+    args: z.object({ before_date: z.string().optional(), confirm: z.boolean().optional() }),
+    adminOnly: true,
+  },
+  {
     name: "update_schedule",
     description: "Change a class in the timetable by schedule id (room, time or day). Admin only.",
     parameters: obj({ id: str("Schedule id"), room: str("New room"), start_time: str("New start HH:MM"), end_time: str("New end HH:MM"), day: str("New day") }, ["id"]),

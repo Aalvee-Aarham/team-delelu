@@ -12,3 +12,9 @@
 [backend/src/agent/runner.ts] inject explicit 8-day date table | model mis-derived weekday dates (called Wednesday 09-07, actually 09-09)
 [backend/src/agent/tools.schema.ts] purpose optional on book_room | agent asked a needless follow-up instead of booking
 [backend/src/server.ts] graceful SIGINT/SIGTERM shutdown | tsx watch reloads failed with EADDRINUSE
+[backend/src/agent/tools.schema.ts] add 14 admin/bulk/analytics/group-slot tool defs | Tier A + B agentic capability expansion (T43-T49)
+[backend/src/agent/tools.executor.ts] implement create/update/delete for schedules/rooms/events/assignments, conflict-checked create_schedule, preview-confirm bulk tools, find_common_free_slot, get_campus_analytics | same
+[backend/src/agent/runner.ts] RULE 3 admin missing-field examples, RULE 5 conflict relay, new RULE 7 bulk preview-confirm | same
+[backend/src/services/analytics.service.ts] created | campus-wide aggregates for agent + dashboard charts
+[backend/src/routes/analytics.routes.ts] created, mounted at /api/analytics | REST access to the same aggregates
+[.claude/rules/dependencies.md] add recharts | in-chat analytics charts (T50)

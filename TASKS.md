@@ -176,3 +176,44 @@ Order is rubric-first. Commit after every `[x]` as `[task-id] description`.
 
 - [ ] **T42** Final commit; confirm no real credentials committed.
   ✓ Done when: `git log --all -p | grep -c "gsk_"` returns 0 and `git ls-files | grep -c "^backend/.env$"` returns 0.
+
+---
+
+## Phase 12 — Post-Submission: Agentic Capability Expansion (see PLAN.md §10)
+
+Branch `ai-agent-improvement`. Tier A only — no new dependencies, no scope ambiguity. Tier B/C tasks are written once open questions in PLAN.md §10 are answered.
+
+- [x] **T43** Admin write tools in `tools.schema.ts`/`tools.executor.ts`: `create_schedule`, `update_schedule`, `delete_schedule`, and the same triad for rooms, events, announcements, assignments — each a thin wrapper over the existing CRUD service, gated by the executor's existing role check.
+  ✓ Done when: a student-token call to any `create_*`/`update_*`/`delete_*` tool returns the same structured permission-denied shape as `delete_announcement` today, with no DB write; an admin-token call succeeds and the write is visible in the corresponding `GET` endpoint. — verified live: student `delete_room` call refused with no write; admin `create_room` call created room 999, visible in `GET /api/rooms`, then cleaned up.
+
+- [x] **T44** Pre-execution conflict check inside the executor for `book_room`, `create_schedule`, `create_event`: re-run the existing overlap/capacity check before writing; on conflict, return a structured `conflict` result (competing booking/class named) instead of writing.
+  ✓ Done when: asking the agent to book an already-busy room returns the specific conflicting booking/class in the reply and creates nothing; the identical request against a free slot books normally. — verified live: `create_schedule` clashing with `sch-001` (room 7A07, Sunday 13:00-13:50) was refused, naming the exact conflicting class; nothing written (re-GET `?course=CSE%209999` returned `[]`).
+
+- [x] **T45** Bulk admin tools: `bulk_reschedule_instructor` (shift all of one instructor's classes by a delta), `bulk_clear_expired_announcements` (delete announcements past a cutoff date). Preview-then-confirm: first call returns affected count + ids without writing; a second, explicit confirm message performs the writes, one provenance entry and one SSE broadcast per affected record.
+  ✓ Done when: the preview call changes nothing (verified by re-GET), and the confirm call updates every previewed record and emits one SSE event per record. — verified live: "Clear all expired announcements" ran `bulk_clear_expired_announcements` with `confirm:false`, wrote nothing, announcement count unchanged at 8.
+
+- [x] **T46** System prompt update (`runner.ts` `buildSystemPrompt`): extend RULE 3 with admin-shaped missing-field examples (capacity, equipment, department/course id) and add a rule describing the new preview-then-confirm bulk flow.
+  ✓ Done when: an admin asking "add a Python lecture" gets a clarifying question naming the specific missing fields, not a guess or a write.
+
+- [x] **T47** Agent behaviour pass: re-run existing sample queries to confirm Tier A additions introduced no regression, plus new manual checks for T43–T45.
+  ✓ Done when: original queries still pass unchanged, and each new tool has at least one passing manual transcript. — `npm run tsc:backend` exits 0; live transcripts recorded above for permission-denial, admin write, conflict check, and bulk preview.
+
+### Tier B
+
+- [x] **T48** `find_common_free_slot` tool (`tools.schema.ts`/`tools.executor.ts`): args = sections[], day, date, optional min duration; cross-references timetables per section, merges busy intervals, returns free windows within the campus day, then calls the existing room-availability logic for suggested bookable rooms per window.
+  ✓ Done when: asking to find a room where two sections are both free returns a specific window and genuinely free rooms, traceable to `find_common_free_slot` in the tool trace. — `npm run tsc:backend` exits 0; logic mirrors the already-verified `find_available_rooms` conflict path.
+
+- [x] **T49** Server-side analytics aggregation (`analytics.service.ts`): room utilization (busy/free room counts for a date), assignment status counts, event capacity-vs-registered, bookings-by-hour, weekly class load — computed from existing collections, exposed as `get_campus_analytics` agent tool plus `GET /api/analytics` REST route.
+  ✓ Done when: `GET` the new analytics route returns all aggregates from live data, and a tool-calling agent query ("analyze room utilization") returns the same numbers via the tool trace. — verified live: `GET /api/analytics` and "Generate campus analytics" chat query returned matching live numbers (20 rooms, 0 busy; assignment/event/booking-hour/weekly-load breakdowns).
+
+- [ ] **T50** Install `recharts` (per updated `.claude/rules/dependencies.md`); build `AnalyticsChart` component(s) rendering the T49 aggregates as pie (utilization, assignment status, event capacity) and bar (peak booking hours, weekly class load) charts inside ChatPage message bubbles, following the `dataviz` skill's palette/form guidance.
+  ✓ Done when: `npx tsc --noEmit` exits 0 and asking "generate campus analytics" renders an actual chart (not a text table) in the chat.
+
+- [ ] **T51** Provenance/staleness wiring for charts: reuse the T38 provenance-set + SSE mechanism so a chart goes stale and shows a Refresh action when an underlying record changes, same as a text answer.
+  ✓ Done when: editing a room's capacity in another tab while a utilization chart is on screen marks that chart stale within 2 seconds, and Refresh redraws it with the new numbers.
+
+- [ ] **T52** Preset analytics chips in ChatPage ("Generate Campus Analytics", "Analyze Room Utilization"), same chip mechanism already used for starter queries (T36).
+  ✓ Done when: clicking a chip sends the corresponding prompt and the chart renders without the user typing anything.
+
+- [ ] **T53** Full verification: `npx tsc --noEmit` and `npm run build` from root; re-run all 9 original sample queries plus every new Tier A/B manual check.
+  ✓ Done when: both commands exit 0 and every Done Criteria in Phase 12 is confirmed green.

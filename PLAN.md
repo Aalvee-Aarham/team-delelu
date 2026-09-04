@@ -168,3 +168,39 @@ For genuinely under-specified requests (*"just book me any room tomorrow afterno
 ## 9. Risk Note
 
 The submission deadline in `SUBMISSION.md` is **8:30 PM, 4 September** — today. Task order in `TASKS.md` is therefore strictly rubric-first: data + CRUD + persistence (40 marks) before the agent (40), agent before polish (20), PRIMARY wow factor after the agent core is green. Every task is independently shippable, so the build is submittable at any stopping point.
+
+---
+
+## 10. Post-Submission — Agentic Capability Expansion
+
+Scope requested after the hackathon deadline, on branch `ai-agent-improvement`. Extends the already-shipped agent (T21–T25, T36–T38) rather than replacing it. Grouped into three tiers by how much they build on existing plumbing vs. require new surface area.
+
+**Tier A — extends the existing tool executor + trace (low new surface)**
+- Admin write tools: `create_schedule`/`create_room`/`create_event`/`create_announcement`/`create_assignment`, `update_*`, `delete_*` — thin wrappers over the CRUD services already used by the REST routes, gated by the same `requireAdmin` check the executor already enforces for `delete_announcement` (T22).
+- Bulk variant tools: `bulk_update_schedules` (e.g. reschedule every class taught by an instructor), `bulk_expire_announcements` — same services, looped, one provenance entry per affected record, one SSE broadcast per record so Live Truth (T38) still tracks them individually.
+- Pre-execution conflict check: before any `book_room`/`create_schedule`/`create_event` write, the executor re-runs the same overlap/capacity check `POST /api/rooms/:room_number/book` already does (T17) and returns a structured `conflict` result instead of writing, so the model can relay it and ask to confirm or revise — this is a tightened version of runner.ts RULE 5, not new logic.
+- Missing-field intake: no schema change needed — RULE 3 in `buildSystemPrompt` (runner.ts:65) already tells the model to ask instead of guess; this tier just adds admin-shaped examples (capacity, equipment, department) to that rule text.
+
+**Tier B — new read tools + frontend surface**
+- `find_common_free_slot(student_ids[])` tool: cross-reference `get_schedule` for each id, return overlapping free windows, then reuse the existing room-availability tool to suggest a bookable room.
+- Announcement urgency triage: no new tool — a `priority: "high"` filter already exists (`GET /api/announcements?priority=high`); add a dashboard/chat surface that puts those first, computed client-side from data the agent/dashboard already fetches.
+- Analytics tool(s) exposing pre-aggregated JSON (room utilization %, assignment status counts, event capacity-vs-registered, bookings-by-hour) computed server-side from existing collections — no new collection, no raw dump to the model (keeps Groq's 8000 TPM ceiling intact, per the CHANGES.md T-lean-projection fix).
+- Chat-embedded charts rendering those aggregates (pie: utilization / assignment status / event capacity; bar: peak booking hours, weekly class load; timeline: deadline map) — **needs the `dataviz` skill loaded before any chart code is written**, and a charting library added to `.claude/rules/dependencies.md` before install (none is present today).
+- Preset suggestion chips ("Generate Campus Analytics", "Analyze Room Utilization") in ChatPage — same chip mechanism already stubbed for T39 clarification chips.
+
+**Tier C — new interaction model (largest surface, touches many files)**
+- Rich in-chat widgets: confirmation cards, date/time pickers, selectable room chips rendered from structured tool results instead of prose — extends `ToolTrace.tsx`/ChatPage rendering, shadcn `Popover`/`Command` added via the CLI per convention.
+- Agent state indicator: ambient status (reading / calling a tool / committed) driven off the same per-round trace data runner.ts already returns, surfaced as a small animated badge in ChatPage.
+- Optimistic UI + undo: CRUD pages apply the mutation to the react-query cache immediately, show a toast with an Undo action that calls the inverse endpoint (`DELETE` for an add, the prior values for an edit) within a short window, then reconciles with the SSE-confirmed state — touches all five CRUD pages plus the shared `FormDialog`/`ConfirmDelete` primitives.
+
+### Wow Factor — Post-Submission
+
+**PRIMARY (new) — Conflict-aware confirmation, not just refusal.** The shipped agent already refuses cleanly (T22) and asks when vague (RULE 3). What it does not yet do is show its work before a write: "7A02 is free 3–5 PM, capacity 40, has a projector — book it?" with the actual competing booking named when it is not free. This is the direct rubric ask ("Pre-Execution Conflict Checking... alerting the user to conflicts before asking to confirm or revise") and reuses 100% of existing provenance/executor plumbing — highest leverage per file touched.
+
+**SECONDARY (new) — Live analytics inside the chat**, sharing the provenance/SSE wiring from T38 so a chart itself can go stale and refresh, the same way a text answer already does.
+
+### Open Questions — resolved
+
+1. **Which tiers to build now?** → Tier A + Tier B. Tier C (rich widgets, agent state indicator, optimistic UI/undo) deferred, not scheduled.
+2. **Charting library?** → `recharts`, added to `.claude/rules/dependencies.md`.
+3. **Bulk operations — confirmation flow?** → preview-then-confirm: first call returns affected count/ids with no write, a second explicit confirm message performs it. Already how T45 is scoped.

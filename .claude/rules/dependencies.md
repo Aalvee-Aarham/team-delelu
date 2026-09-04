@@ -25,6 +25,7 @@
 - sonner — toasts
 - next-themes — theme provider required by shadcn's sonner wrapper
 - lucide-react — icons
+- recharts — charts for in-chat analytics widgets (pie/bar/timeline), pairs with shadcn's `chart` component
 - vite 8, @vitejs/plugin-react — build tooling
 - typescript 6 (dev) — type checking
 

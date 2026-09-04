@@ -6,8 +6,46 @@ import { Announcement } from "../models/announcement.model";
 import { Assignment } from "../models/assignment.model";
 import { AuthPayload } from "../middleware/auth";
 import { TOOLS_BY_NAME } from "./tools.schema";
-import { findAvailableRooms, findRoomConflict, attachBookings } from "../services/rooms.service";
+import { findAvailableRooms, findRoomConflict, attachBookings, timesOverlap } from "../services/rooms.service";
+import { computeAnalytics } from "../services/analytics.service";
 import { publishChange } from "../realtime/sse";
+
+const CAMPUS_DAY_START = "08:00";
+const CAMPUS_DAY_END = "18:00";
+
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function toTime(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+function freeWindows(busy: { start_time: string; end_time: string }[], minDurationMinutes: number) {
+  const merged = busy
+    .map((b) => [toMinutes(b.start_time), toMinutes(b.end_time)] as const)
+    .sort((a, b) => a[0] - b[0])
+    .reduce<[number, number][]>((acc, [start, end]) => {
+      const last = acc[acc.length - 1];
+      if (last && start <= last[1]) {
+        last[1] = Math.max(last[1], end);
+      } else {
+        acc.push([start, end]);
+      }
+      return acc;
+    }, []);
+
+  const windows: { start_time: string; end_time: string }[] = [];
+  let cursor = toMinutes(CAMPUS_DAY_START);
+  const dayEnd = toMinutes(CAMPUS_DAY_END);
+  for (const [start, end] of merged) {
+    if (start - cursor >= minDurationMinutes) windows.push({ start_time: toTime(cursor), end_time: toTime(start) });
+    cursor = Math.max(cursor, end);
+  }
+  if (dayEnd - cursor >= minDurationMinutes) windows.push({ start_time: toTime(cursor), end_time: toTime(dayEnd) });
+  return windows;
+}
 
 export interface Provenance {
   collection: string;
@@ -143,6 +181,34 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
         },
         provenance: prov("rooms", result.available),
       };
+    }
+
+    case "find_common_free_slot": {
+      const minDuration = args.min_duration_minutes ?? 30;
+      const classes = await Schedule.find({ day: args.day, section: { $in: args.sections } });
+      const windows = freeWindows(classes, minDuration);
+      if (windows.length === 0) {
+        return {
+          ok: true,
+          data: { windows: [], message: "No common free window found that day for those sections." },
+          provenance: prov("schedules", classes),
+        };
+      }
+      const withRooms = await Promise.all(
+        windows.map(async (w) => {
+          const result = await findAvailableRooms({ date: args.date, start_time: w.start_time, end_time: w.end_time });
+          return {
+            ...w,
+            suggested_rooms: result.available.slice(0, 5).map((r) => ({ room_number: r.room_number, capacity: r.capacity, equipment: r.equipment })),
+          };
+        })
+      );
+      return { ok: true, data: { windows: withRooms }, provenance: prov("schedules", classes) };
+    }
+
+    case "get_campus_analytics": {
+      const data = await computeAnalytics(args.date);
+      return { ok: true, data, provenance: [] };
     }
 
     case "book_room": {
@@ -289,6 +355,160 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
       if (!doc) return { ok: false, data: { error: "not_found", message: `No schedule ${args.id}` }, provenance: [] };
       publishChange("schedules", "delete", args.id);
       return { ok: true, data: { deleted: args.id }, provenance: [] };
+    }
+
+    case "create_schedule": {
+      if (args.start_time >= args.end_time) {
+        return { ok: false, data: { error: "invalid_time_range", message: "start_time must be before end_time" }, provenance: [] };
+      }
+      const clashes = await Schedule.find({ room: args.room, day: args.day });
+      const clash = clashes.find((c) => timesOverlap(args.start_time, args.end_time, c.start_time, c.end_time));
+      if (clash) {
+        return {
+          ok: false,
+          data: { error: "conflict", message: `Room ${args.room} already has ${clash.course} (${clash.title}) on ${args.day} ${clash.start_time}-${clash.end_time}` },
+          provenance: [{ collection: "schedules", id: clash.id }],
+        };
+      }
+      const id = `sch-${Date.now().toString(36)}`;
+      const doc = await Schedule.create({ id, ...args });
+      publishChange("schedules", "create", id);
+      return { ok: true, data: doc, provenance: [{ collection: "schedules", id }] };
+    }
+
+    case "create_room": {
+      const existing = await Room.findOne({ room_number: args.room_number });
+      if (existing) {
+        return { ok: false, data: { error: "conflict", message: `Room ${args.room_number} already exists` }, provenance: [{ collection: "rooms", id: existing.id }] };
+      }
+      const id = `room-${Date.now().toString(36)}`;
+      const doc = await Room.create({ id, room_number: args.room_number, type: args.type, capacity: args.capacity, equipment: args.equipment ?? [], floor: args.floor });
+      publishChange("rooms", "create", id);
+      return { ok: true, data: doc, provenance: [{ collection: "rooms", id }] };
+    }
+
+    case "update_room": {
+      const update: Record<string, unknown> = {};
+      for (const key of ["type", "capacity", "equipment", "floor", "status"] as const) {
+        if (args[key] !== undefined) update[key] = args[key];
+      }
+      const doc = await Room.findOneAndUpdate({ room_number: args.room_number }, update, { new: true });
+      if (!doc) return { ok: false, data: { error: "not_found", message: `No room ${args.room_number}` }, provenance: [] };
+      publishChange("rooms", "update", doc.id);
+      return { ok: true, data: doc, provenance: [{ collection: "rooms", id: doc.id }] };
+    }
+
+    case "delete_room": {
+      const doc = await Room.findOneAndDelete({ room_number: args.room_number });
+      if (!doc) return { ok: false, data: { error: "not_found", message: `No room ${args.room_number}` }, provenance: [] };
+      publishChange("rooms", "delete", doc.id);
+      return { ok: true, data: { deleted: args.room_number }, provenance: [] };
+    }
+
+    case "create_event": {
+      const id = `evt-${Date.now().toString(36)}`;
+      const doc = await Event.create({ id, ...args, registered: 0, registrations: [], status: "upcoming" });
+      publishChange("events", "create", id);
+      return { ok: true, data: doc, provenance: [{ collection: "events", id }] };
+    }
+
+    case "update_event": {
+      const update: Record<string, unknown> = {};
+      for (const key of ["name", "description", "date", "start_time", "end_time", "venue", "capacity", "status"] as const) {
+        if (args[key] !== undefined) update[key] = args[key];
+      }
+      const doc = await Event.findOneAndUpdate({ id: args.id }, update, { new: true });
+      if (!doc) return { ok: false, data: { error: "not_found", message: `No event ${args.id}` }, provenance: [] };
+      publishChange("events", "update", args.id);
+      return { ok: true, data: doc, provenance: [{ collection: "events", id: args.id }] };
+    }
+
+    case "delete_event": {
+      const doc = await Event.findOneAndDelete({ id: args.id });
+      if (!doc) return { ok: false, data: { error: "not_found", message: `No event ${args.id}` }, provenance: [] };
+      publishChange("events", "delete", args.id);
+      return { ok: true, data: { deleted: args.id }, provenance: [] };
+    }
+
+    case "create_assignment": {
+      const id = `asg-${Date.now().toString(36)}`;
+      const doc = await Assignment.create({ id, ...args, status: "pending" });
+      publishChange("assignments", "create", id);
+      return { ok: true, data: doc, provenance: [{ collection: "assignments", id }] };
+    }
+
+    case "update_assignment": {
+      const update: Record<string, unknown> = {};
+      for (const key of ["title", "description", "deadline", "status", "marks"] as const) {
+        if (args[key] !== undefined) update[key] = args[key];
+      }
+      const doc = await Assignment.findOneAndUpdate({ id: args.id }, update, { new: true });
+      if (!doc) return { ok: false, data: { error: "not_found", message: `No assignment ${args.id}` }, provenance: [] };
+      publishChange("assignments", "update", args.id);
+      return { ok: true, data: doc, provenance: [{ collection: "assignments", id: args.id }] };
+    }
+
+    case "delete_assignment": {
+      const doc = await Assignment.findOneAndDelete({ id: args.id });
+      if (!doc) return { ok: false, data: { error: "not_found", message: `No assignment ${args.id}` }, provenance: [] };
+      publishChange("assignments", "delete", args.id);
+      return { ok: true, data: { deleted: args.id }, provenance: [] };
+    }
+
+    case "bulk_reschedule_instructor": {
+      const matches = await Schedule.find({
+        instructor: { $regex: args.instructor, $options: "i" },
+        ...(args.day ? { day: args.day } : {}),
+      });
+      if (matches.length === 0) {
+        return { ok: false, data: { error: "not_found", message: `No classes found for instructor matching '${args.instructor}'` }, provenance: [] };
+      }
+      const shift = (time: string) => {
+        const [h, m] = time.split(":").map(Number);
+        const total = ((h * 60 + m + args.delta_minutes) % 1440 + 1440) % 1440;
+        return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+      };
+      const preview = matches.map((c) => ({
+        id: c.id,
+        course: c.course,
+        day: c.day,
+        from: `${c.start_time}-${c.end_time}`,
+        to: `${shift(c.start_time)}-${shift(c.end_time)}`,
+      }));
+      if (!args.confirm) {
+        return {
+          ok: true,
+          data: { preview: true, message: "Nothing written yet. Show this preview to the user and call again with confirm=true only after they explicitly agree.", affected: preview },
+          provenance: prov("schedules", matches),
+        };
+      }
+      for (const c of matches) {
+        c.start_time = shift(c.start_time);
+        c.end_time = shift(c.end_time);
+        await c.save();
+        publishChange("schedules", "update", c.id);
+      }
+      return { ok: true, data: { rescheduled: preview }, provenance: prov("schedules", matches) };
+    }
+
+    case "bulk_clear_expired_announcements": {
+      const cutoff = args.before_date || new Date().toISOString().slice(0, 10);
+      const matches = await Announcement.find({ expires: { $lt: cutoff } });
+      if (matches.length === 0) {
+        return { ok: true, data: { preview: !args.confirm, message: "No expired announcements found.", affected: [] }, provenance: [] };
+      }
+      const preview = matches.map((a) => ({ id: a.id, title: a.title, expires: a.expires }));
+      if (!args.confirm) {
+        return {
+          ok: true,
+          data: { preview: true, message: "Nothing deleted yet. Show this preview to the user and call again with confirm=true only after they explicitly agree.", affected: preview },
+          provenance: prov("announcements", matches),
+        };
+      }
+      const ids = matches.map((a) => a.id);
+      await Announcement.deleteMany({ id: { $in: ids } });
+      for (const id of ids) publishChange("announcements", "delete", id);
+      return { ok: true, data: { deleted: preview }, provenance: [] };
     }
 
     default:
