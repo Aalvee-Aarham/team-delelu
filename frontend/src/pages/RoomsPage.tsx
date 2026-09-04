@@ -1,22 +1,26 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, X } from "lucide-react";
+import { DoorOpen, Layers, Plus, Users, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { FormDialog } from "@/components/FormDialog";
 import type { FieldDef, FormValues } from "@/components/FormDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { RoomFinder } from "@/components/RoomFinder";
 import type { RoomFilters } from "@/components/RoomFinder";
+import { BookRoomDialog } from "@/components/BookRoomDialog";
+import type { BookingForm } from "@/components/BookRoomDialog";
+import { RowActions } from "@/components/RowActions";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusPill } from "@/components/StatusPill";
 import { useResourceList, useResourceMutations } from "@/hooks/useResource";
 import { useAuth } from "@/context/AuthContext";
 import { api, apiErrorMessage } from "@/lib/axios";
 import type { Room } from "@/lib/types";
+import { ROOM_TONE } from "@/lib/tone";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const FIELDS: FieldDef[] = [
   { name: "id", label: "ID", required: true, placeholder: "room-021", hideOnEdit: true },
@@ -28,8 +32,6 @@ const FIELDS: FieldDef[] = [
   { name: "status", label: "Status", type: "select", options: ["available", "unavailable"], required: true },
 ];
 
-const EMPTY_BOOKING = { date: "", start_time: "", end_time: "", purpose: "" };
-
 export default function RoomsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -40,7 +42,6 @@ export default function RoomsPage() {
   const [editing, setEditing] = useState<Room | null>(null);
   const [deleting, setDeleting] = useState<Room | null>(null);
   const [booking, setBooking] = useState<Room | null>(null);
-  const [bookForm, setBookForm] = useState(EMPTY_BOOKING);
 
   const { data, isLoading } = useResourceList<Room>("rooms", {
     type: filters.type || undefined,
@@ -50,13 +51,12 @@ export default function RoomsPage() {
   const { create, update, remove } = useResourceMutations<Room>("rooms", "Room");
 
   const book = useMutation({
-    mutationFn: async ({ room, payload }: { room: string; payload: typeof bookForm }) =>
+    mutationFn: async ({ room, payload }: { room: string; payload: BookingForm }) =>
       (await api.post(`/rooms/${room}/book`, payload)).data,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
       toast.success("Room booked");
       setBooking(null);
-      setBookForm(EMPTY_BOOKING);
     },
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
@@ -70,15 +70,19 @@ export default function RoomsPage() {
     onError: (e) => toast.error(apiErrorMessage(e)),
   });
 
+  const rows = data ?? [];
+
   return (
     <>
       <PageHeader
+        eyebrow="Campus"
         title="Rooms"
-        subtitle="Capacity, equipment and live bookings. A timetabled class blocks a room too."
+        subtitle="Capacity, equipment and live bookings across the building."
         action={
           isAdmin && (
-            <Button onClick={() => setCreating(true)} className="gap-2">
-              <Plus className="h-4 w-4" /> Add room
+            <Button onClick={() => setCreating(true)}>
+              <Plus />
+              Add room
             </Button>
           )
         }
@@ -86,128 +90,121 @@ export default function RoomsPage() {
 
       <RoomFinder filters={filters} onFiltersChange={setFilters} />
 
+      <div className="eyebrow mb-4 text-muted-foreground">
+        {rows.length} {rows.length === 1 ? "room" : "rooms"}
+      </div>
+
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-44 w-full" />
+            <Skeleton key={i} className="h-52 w-full" />
           ))}
         </div>
+      ) : rows.length === 0 ? (
+        <EmptyState
+          icon={DoorOpen}
+          title="No rooms match"
+          description="Loosen the capacity or equipment filters to see more rooms."
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(data ?? []).map((room) => (
-            <div key={room.id} className="flex flex-col rounded-xl border border-border bg-card p-4">
-              <div className="mb-2 flex items-start justify-between">
-                <div>
-                  <div className="text-lg font-semibold">{room.room_number}</div>
-                  <div className="text-xs capitalize text-muted-foreground">
-                    {room.type} · floor {room.floor} · {room.capacity} seats
+          {rows.map((room) => {
+            const unavailable = room.status === "unavailable";
+            return (
+              <article
+                key={room.id}
+                className="flex flex-col rounded-lg border border-ink/12 bg-card p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xl leading-none font-bold tracking-tight">
+                      {room.room_number}
+                    </div>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <StatusPill tone={ROOM_TONE[room.type] ?? "ink"}>{room.type}</StatusPill>
+                      {unavailable && <StatusPill tone="red">unavailable</StatusPill>}
+                    </div>
                   </div>
+                  {isAdmin && (
+                    <RowActions
+                      label={room.room_number}
+                      onEdit={() => setEditing(room)}
+                      onDelete={() => setDeleting(room)}
+                    />
+                  )}
                 </div>
-                {isAdmin && (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => setEditing(room)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleting(room)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                )}
-              </div>
 
-              <div className="mb-3 flex flex-wrap gap-1">
-                {room.equipment.map((eq) => (
-                  <span key={eq} className="rounded bg-secondary px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                    {eq}
+                <div className="mt-4 flex items-center gap-4 text-[12px] text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5" />
+                    Floor {room.floor}
                   </span>
-                ))}
-              </div>
+                  <span className="tnum flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    {room.capacity} seats
+                  </span>
+                </div>
 
-              <div className="flex-1">
-                {room.bookings.length > 0 && (
-                  <div className="space-y-1">
-                    <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Bookings</div>
-                    {room.bookings.map((b) => (
-                      <div
-                        key={b.booking_id}
-                        className="flex items-center justify-between gap-2 rounded bg-secondary/60 px-2 py-1 text-xs"
-                      >
-                        <span className="min-w-0 truncate">
-                          {b.date} {b.start_time}–{b.end_time} · {b.purpose}
-                        </span>
-                        <button
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => cancelBooking.mutate(b.booking_id)}
-                          title="Cancel booking"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                {room.equipment.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {room.equipment.map((eq) => (
+                      <Badge key={eq} variant="secondary">
+                        {eq}
+                      </Badge>
                     ))}
                   </div>
                 )}
-              </div>
 
-              <Button
-                className="mt-3 w-full"
-                variant="outline"
-                size="sm"
-                disabled={room.status === "unavailable"}
-                onClick={() => setBooking(room)}
-              >
-                {room.status === "unavailable" ? "Unavailable" : "Book this room"}
-              </Button>
-            </div>
-          ))}
+                <div className="mt-4 flex-1">
+                  {room.bookings.length > 0 && (
+                    <>
+                      <div className="eyebrow mb-2 text-muted-foreground">Bookings</div>
+                      <ul className="space-y-1.5">
+                        {room.bookings.map((b) => (
+                          <li
+                            key={b.booking_id}
+                            className="flex items-center justify-between gap-2 rounded border border-ink/10 bg-paper-deep/60 px-2 py-1.5 text-[11px]"
+                          >
+                            <span className="tnum min-w-0 truncate">
+                              {b.date} {b.start_time}–{b.end_time} · {b.purpose}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="Cancel booking"
+                              className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                              onClick={() => cancelBooking.mutate(b.booking_id)}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+
+                <Button
+                  className="mt-5 w-full"
+                  variant="outline"
+                  disabled={unavailable}
+                  onClick={() => setBooking(room)}
+                >
+                  {unavailable ? "Unavailable" : "Book this room"}
+                </Button>
+              </article>
+            );
+          })}
         </div>
       )}
 
-      <Dialog open={Boolean(booking)} onOpenChange={(o) => !o && setBooking(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Book {booking?.room_number}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-1.5">
-              <Label>Date</Label>
-              <Input type="date" value={bookForm.date} onChange={(e) => setBookForm({ ...bookForm, date: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>From</Label>
-                <Input
-                  placeholder="15:00"
-                  value={bookForm.start_time}
-                  onChange={(e) => setBookForm({ ...bookForm, start_time: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>To</Label>
-                <Input
-                  placeholder="17:00"
-                  value={bookForm.end_time}
-                  onChange={(e) => setBookForm({ ...bookForm, end_time: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Purpose</Label>
-              <Input value={bookForm.purpose} onChange={(e) => setBookForm({ ...bookForm, purpose: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBooking(null)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={book.isPending || !bookForm.date || !bookForm.start_time || !bookForm.end_time || !bookForm.purpose}
-              onClick={() => booking && book.mutate({ room: booking.room_number, payload: bookForm })}
-            >
-              {book.isPending ? "Booking…" : "Confirm booking"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BookRoomDialog
+        room={booking}
+        pending={book.isPending}
+        onOpenChange={(open) => !open && setBooking(null)}
+        onConfirm={(payload) =>
+          booking && book.mutate({ room: booking.room_number, payload })
+        }
+      />
 
       <FormDialog
         open={creating}
@@ -215,7 +212,9 @@ export default function RoomsPage() {
         title="Add a room"
         fields={FIELDS}
         submitting={create.isPending}
-        onSubmit={(v: FormValues) => create.mutate(v as Partial<Room>, { onSuccess: () => setCreating(false) })}
+        onSubmit={(v: FormValues) =>
+          create.mutate(v as Partial<Room>, { onSuccess: () => setCreating(false) })
+        }
       />
 
       <FormDialog
@@ -226,7 +225,8 @@ export default function RoomsPage() {
         initial={editing ? (editing as unknown as FormValues) : undefined}
         submitting={update.isPending}
         onSubmit={(v: FormValues) =>
-          editing && update.mutate({ id: editing.id, payload: v as Partial<Room> }, { onSuccess: () => setEditing(null) })
+          editing &&
+          update.mutate({ id: editing.id, payload: v as Partial<Room> }, { onSuccess: () => setEditing(null) })
         }
       />
 

@@ -1,30 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Send, RefreshCw, AlertCircle, Sparkles, BarChart3, Mic, Square, Volume2, Loader2 } from "lucide-react";
+import { ArrowRight, BarChart3, Loader2, Mic, Send, Sparkles, Square } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/axios";
 import { onCampusChange } from "@/hooks/useChangeStream";
 import { useAuth } from "@/context/AuthContext";
 import type { AgentResponse, CampusAnalytics, ChangeEvent } from "@/lib/types";
+import { PageHeader } from "@/components/PageHeader";
+import { ChatTurn } from "@/components/ChatTurn";
+import type { Turn } from "@/components/ChatTurn";
+import { StatusPill } from "@/components/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ToolTrace } from "@/components/ToolTrace";
-import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { VoiceRecorder, transcribeAudio, speakText } from "@/lib/voice";
 import { toast } from "sonner";
-
-interface Turn {
-  id: number;
-  question: string;
-  answer: string;
-  result: AgentResponse | null;
-  error?: string;
-  stale?: { collection: string; id: string } | null;
-  previous?: string;
-  refreshing?: boolean;
-  chart?: CampusAnalytics | null;
-  audioUrl?: string;
-  speaking?: boolean;
-}
 
 const STARTERS = [
   "When is my next class?",
@@ -129,7 +117,9 @@ export default function ChatPage() {
         });
       })
       .catch((err) =>
-        setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, error: apiErrorMessage(err), refreshing: false } : x)))
+        setTurns((t) =>
+          t.map((x) => (x.id === turn.id ? { ...x, error: apiErrorMessage(err), refreshing: false } : x))
+        )
       );
   };
 
@@ -182,148 +172,111 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight">AI Agent</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Reads live campus data on every question. Signed in as {user?.name} ({user?.role}).
-        </p>
-      </div>
+    <>
+      <PageHeader
+        eyebrow="Assistant"
+        title="AI Agent"
+        subtitle="Reads live campus data on every question through real tool calls, and refuses actions your role cannot perform."
+        action={
+          <StatusPill tone={user?.role === "admin" ? "violet" : "green"}>
+            {user?.role} · {user?.name}
+          </StatusPill>
+        }
+      />
 
-      <div className="flex-1 space-y-5 overflow-y-auto pr-1">
-        {turns.length === 0 && (
-          <div className="rounded-xl border border-border bg-card p-6">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="h-4 w-4 text-primary" /> Try asking
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="flex h-[calc(100dvh-15rem)] min-h-[460px] flex-col overflow-hidden rounded-lg border border-ink/12 bg-paper-deep/35">
+        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+          {turns.length === 0 && (
+            <div className="rounded-lg border border-ink/12 bg-card p-6">
+              <div className="mb-1 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet" />
+                <span className="text-[15px] font-semibold tracking-tight">Try asking</span>
+              </div>
+              <p className="mb-5 text-[13px] text-muted-foreground">
+                Every answer records the records it came from, so it can tell you when it goes stale.
+              </p>
 
-        {turns.map((turn) => (
-          <div key={turn.id} className="animate-fade-up space-y-2">
-            <div className="flex justify-end">
-              <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-2 text-sm text-primary-foreground">
-                {turn.question}
+              <div className="grid gap-2 sm:grid-cols-2">
+                {STARTERS.map((starter) => (
+                  <button
+                    key={starter}
+                    type="button"
+                    onClick={() => send(starter)}
+                    className="group flex items-start justify-between gap-3 rounded-md border border-ink/12 bg-paper-deep/50 px-3.5 py-3 text-left text-[13px] leading-snug text-muted-foreground transition-colors hover:border-ink/35 hover:bg-card hover:text-foreground"
+                  >
+                    {starter}
+                    <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
+                  </button>
+                ))}
               </div>
             </div>
+          )}
 
-            <div className="flex justify-start">
-              <div
-                className={`max-w-[85%] rounded-2xl rounded-bl-sm border px-4 py-3 text-sm transition-all ${
-                  turn.stale ? "border-warn/50 bg-warn/5" : "border-border bg-card"
-                }`}
+          {turns.map((turn) => (
+            <ChatTurn key={turn.id} turn={turn} onRefresh={refresh} onSpeak={speak} />
+          ))}
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="border-t border-ink/12 bg-card">
+          <div className="flex flex-wrap gap-2 px-4 pt-3">
+            {ANALYTICS_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => send(chip.replace("📊 ", ""))}
+                disabled={ask.isPending}
+                className="flex items-center gap-1.5 rounded-full border border-ink/15 bg-paper-deep/50 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-ink/35 hover:text-foreground disabled:opacity-50"
               >
-                {turn.error ? (
-                  <div className="flex items-start gap-2 text-destructive">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    {turn.error}
-                  </div>
-                ) : !turn.answer ? (
-                  <div className="flex gap-1 py-1">
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
-                  </div>
-                ) : (
-                  <>
-                    {turn.previous && (
-                      <div className="mb-2 rounded-lg border border-border bg-background/60 p-2 text-xs text-muted-foreground line-through decoration-destructive/60">
-                        {turn.previous}
-                      </div>
-                    )}
-
-                    <div className="flex items-start gap-2">
-                      <div className={`whitespace-pre-wrap leading-relaxed ${turn.stale ? "text-muted-foreground line-through decoration-warn/60" : ""}`}>
-                        {turn.answer}
-                      </div>
-                      {!turn.stale && (
-                        <button
-                          onClick={() => speak(turn)}
-                          disabled={turn.speaking}
-                          title="Play spoken reply"
-                          className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
-                        >
-                          {turn.speaking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Volume2 className="h-3.5 w-3.5" />}
-                        </button>
-                      )}
-                    </div>
-
-                    {turn.stale && (
-                      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2">
-                        <span className="text-xs text-warn">
-                          This changed while you were reading — {turn.stale.collection} {turn.stale.id} was just edited.
-                        </span>
-                        <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => refresh(turn)} disabled={turn.refreshing}>
-                          <RefreshCw className={`h-3 w-3 ${turn.refreshing ? "animate-spin" : ""}`} />
-                          {turn.refreshing ? "Re-checking…" : "Refresh answer"}
-                        </Button>
-                      </div>
-                    )}
-
-                    {turn.chart && !turn.stale && <AnalyticsChart data={turn.chart} />}
-
-                    {turn.result && <ToolTrace result={turn.result} />}
-                  </>
-                )}
-              </div>
-            </div>
+                <BarChart3 className="h-3 w-3" />
+                {chip.replace("📊 ", "")}
+              </button>
+            ))}
           </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {ANALYTICS_CHIPS.map((chip) => (
-          <button
-            key={chip}
-            onClick={() => send(chip.replace("📊 ", ""))}
-            disabled={ask.isPending}
-            className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary transition-colors hover:bg-primary/10 disabled:opacity-50"
+          <form
+            className="flex gap-2 p-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send(input);
+            }}
           >
-            <BarChart3 className="h-3 w-3" />
-            {chip.replace("📊 ", "")}
-          </button>
-        ))}
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                isRecording ? "Listening…" : transcribing ? "Transcribing…" : "Ask about classes, rooms, events, deadlines…"
+              }
+              disabled={ask.isPending || isRecording || transcribing}
+              aria-label="Message the agent"
+            />
+            <Button
+              type="button"
+              variant={isRecording ? "destructive" : "outline"}
+              onClick={toggleRecording}
+              disabled={ask.isPending || transcribing}
+              className="gap-2"
+              title={isRecording ? "Stop recording" : "Record voice query"}
+            >
+              {transcribing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isRecording ? (
+                <Square className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              type="submit"
+              disabled={ask.isPending || !input.trim() || isRecording || transcribing}
+              className="gap-2"
+            >
+              <Send className="h-4 w-4" />
+              Send
+            </Button>
+          </form>
+        </div>
       </div>
-
-      <form
-        className="mt-3 flex gap-2 border-t border-border pt-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(input);
-        }}
-      >
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={isRecording ? "Listening…" : transcribing ? "Transcribing…" : "Ask about classes, rooms, events, deadlines…"}
-          disabled={ask.isPending || isRecording || transcribing}
-        />
-        <Button
-          type="button"
-          variant={isRecording ? "destructive" : "outline"}
-          onClick={toggleRecording}
-          disabled={ask.isPending || transcribing}
-          className="gap-2"
-        >
-          {transcribing ? <Loader2 className="h-4 w-4 animate-spin" /> : isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-        </Button>
-        <Button type="submit" disabled={ask.isPending || !input.trim() || isRecording || transcribing} className="gap-2">
-          <Send className="h-4 w-4" />
-          Send
-        </Button>
-      </form>
-    </div>
+    </>
   );
 }

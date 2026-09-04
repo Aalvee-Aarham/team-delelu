@@ -1,14 +1,18 @@
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { FormDialog } from "@/components/FormDialog";
 import type { FieldDef, FormValues } from "@/components/FormDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { FilterTabs } from "@/components/FilterTabs";
+import { DataTable, TCell, TRow } from "@/components/DataTable";
+import { RowActions } from "@/components/RowActions";
+import { EmptyState } from "@/components/EmptyState";
 import { useResourceList, useResourceMutations } from "@/hooks/useResource";
 import { useAuth } from "@/context/AuthContext";
 import type { Schedule } from "@/lib/types";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
@@ -28,7 +32,7 @@ const FIELDS: FieldDef[] = [
 export default function SchedulesPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [day, setDay] = useState<string>("");
+  const [day, setDay] = useState("");
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Schedule | null>(null);
@@ -37,33 +41,49 @@ export default function SchedulesPage() {
   const { create, update, remove } = useResourceMutations<Schedule>("schedules", "Class");
 
   const rows = useMemo(
-    () => [...(data ?? [])].sort((a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.start_time.localeCompare(b.start_time)),
+    () =>
+      [...(data ?? [])].sort(
+        (a, b) => DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || a.start_time.localeCompare(b.start_time)
+      ),
     [data]
   );
+
+  const columns = [
+    { key: "index", label: "#", className: "w-12" },
+    { key: "course", label: "Course" },
+    { key: "day", label: "Day" },
+    { key: "time", label: "Time" },
+    { key: "room", label: "Room" },
+    { key: "instructor", label: "Instructor" },
+    { key: "section", label: "Sec" },
+    ...(isAdmin ? [{ key: "actions", label: "Actions", className: "w-24 text-right" }] : []),
+  ];
 
   return (
     <>
       <PageHeader
+        eyebrow="Academics"
         title="Class Schedule"
-        subtitle="The weekly timetable. Sunday to Thursday."
+        subtitle="The weekly timetable, Sunday to Thursday. Admins can add, edit and remove classes."
         action={
           isAdmin && (
-            <Button onClick={() => setCreating(true)} className="gap-2">
-              <Plus className="h-4 w-4" /> Add class
+            <Button onClick={() => setCreating(true)}>
+              <Plus />
+              Add class
             </Button>
           )
         }
       />
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Button variant={day === "" ? "default" : "outline"} size="sm" onClick={() => setDay("")}>
-          All days
-        </Button>
-        {DAYS.map((d) => (
-          <Button key={d} variant={day === d ? "default" : "outline"} size="sm" onClick={() => setDay(d)}>
-            {d}
-          </Button>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          value={day}
+          onChange={setDay}
+          options={[{ value: "", label: "All days" }, ...DAYS.map((d) => ({ value: d, label: d }))]}
+        />
+        <span className="eyebrow text-muted-foreground">
+          {rows.length} {rows.length === 1 ? "class" : "classes"}
+        </span>
       </div>
 
       {isLoading ? (
@@ -73,65 +93,57 @@ export default function SchedulesPage() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-          No classes found{day && ` on ${day}`}.
-        </div>
+        <EmptyState
+          icon={CalendarDays}
+          title="No classes found"
+          description={
+            day
+              ? `Nothing is timetabled on ${day}. Try another day.`
+              : "The timetable is empty for now."
+          }
+        />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-card text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">Course</th>
-                <th className="px-4 py-3">Day</th>
-                <th className="px-4 py-3">Time</th>
-                <th className="px-4 py-3">Room</th>
-                <th className="px-4 py-3">Instructor</th>
-                <th className="px-4 py-3">Sec</th>
-                {isAdmin && <th className="w-24 px-4 py-3" />}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <tr key={s.id} className="border-t border-border hover:bg-card/60">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{s.course}</div>
-                    <div className="text-xs text-muted-foreground">{s.title}</div>
-                  </td>
-                  <td className="px-4 py-3">{s.day}</td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {s.start_time}–{s.end_time}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="secondary">{s.room}</Badge>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.instructor}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.section}</td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setEditing(s)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleting(s)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={columns}>
+          {rows.map((s, index) => (
+            <TRow key={s.id}>
+              <TCell className="tnum text-[13px] text-muted-foreground">{index + 1}</TCell>
+              <TCell>
+                <div className="font-semibold">{s.course}</div>
+                <div className="mt-0.5 text-[12px] text-muted-foreground">{s.title}</div>
+              </TCell>
+              <TCell className="text-[13px]">{s.day}</TCell>
+              <TCell className="tnum text-[13px] whitespace-nowrap">
+                {s.start_time}–{s.end_time}
+              </TCell>
+              <TCell>
+                <Badge>{s.room}</Badge>
+              </TCell>
+              <TCell className="text-[13px] text-muted-foreground">{s.instructor}</TCell>
+              <TCell className="text-[13px] text-muted-foreground">{s.section}</TCell>
+              {isAdmin && (
+                <TCell>
+                  <RowActions
+                    label={s.course}
+                    onEdit={() => setEditing(s)}
+                    onDelete={() => setDeleting(s)}
+                  />
+                </TCell>
+              )}
+            </TRow>
+          ))}
+        </DataTable>
       )}
 
       <FormDialog
         open={creating}
         onOpenChange={setCreating}
         title="Add a class"
+        description="Adds a slot to the weekly timetable and blocks the room for that period."
         fields={FIELDS}
         submitting={create.isPending}
-        onSubmit={(values: FormValues) => create.mutate(values as Partial<Schedule>, { onSuccess: () => setCreating(false) })}
+        onSubmit={(values: FormValues) =>
+          create.mutate(values as Partial<Schedule>, { onSuccess: () => setCreating(false) })
+        }
       />
 
       <FormDialog
@@ -143,7 +155,10 @@ export default function SchedulesPage() {
         submitting={update.isPending}
         onSubmit={(values: FormValues) =>
           editing &&
-          update.mutate({ id: editing.id, payload: values as Partial<Schedule> }, { onSuccess: () => setEditing(null) })
+          update.mutate(
+            { id: editing.id, payload: values as Partial<Schedule> },
+            { onSuccess: () => setEditing(null) }
+          )
         }
       />
 

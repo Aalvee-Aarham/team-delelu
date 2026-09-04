@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ interface FormDialogProps {
   fields: FieldDef[];
   initial?: FormValues;
   submitting?: boolean;
+  extra?: ReactNode;
   onSubmit: (values: FormValues) => void;
 }
 
@@ -43,6 +45,7 @@ export function FormDialog({
   fields,
   initial,
   submitting,
+  extra,
   onSubmit,
 }: FormDialogProps) {
   const [values, setValues] = useState<FormValues>({});
@@ -75,18 +78,18 @@ export function FormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[86vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
-        <div className="grid gap-4 py-2">
+        <div className="grid gap-4">
           {visible.map((field) => {
             const value = values[field.name];
             const stringValue = Array.isArray(value) ? value.join(", ") : value === undefined ? "" : String(value);
             return (
-              <div key={field.name} className="grid gap-1.5">
+              <div key={field.name} className="grid gap-2">
                 <Label htmlFor={field.name}>
                   {field.label}
                   {field.required && <span className="ml-1 text-destructive">*</span>}
@@ -105,7 +108,7 @@ export function FormDialog({
                     id={field.name}
                     value={stringValue}
                     onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
-                    className="h-9 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                    className="h-9 rounded-md border border-input bg-card px-3 text-sm capitalize outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/25"
                   >
                     <option value="">Select…</option>
                     {field.options?.map((opt) => (
@@ -126,6 +129,7 @@ export function FormDialog({
               </div>
             );
           })}
+          {extra}
         </div>
 
         <DialogFooter>

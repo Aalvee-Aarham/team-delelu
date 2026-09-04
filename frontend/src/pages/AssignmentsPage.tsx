@@ -1,12 +1,21 @@
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { NotebookPen, Plus, Send } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { FormDialog } from "@/components/FormDialog";
 import type { FieldDef, FormValues } from "@/components/FormDialog";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { FilterTabs } from "@/components/FilterTabs";
+import { RowActions } from "@/components/RowActions";
+import { EmptyState } from "@/components/EmptyState";
+import { StatusPill } from "@/components/StatusPill";
 import { useResourceList, useResourceMutations } from "@/hooks/useResource";
+import { useSubmissions } from "@/hooks/useClassroom";
 import { useAuth } from "@/context/AuthContext";
-import type { Assignment } from "@/lib/types";
+import type { Assignment, Course, Submission } from "@/lib/types";
+import { TONE_EDGE } from "@/lib/tone";
+import { SUBMISSION_LABEL, SUBMISSION_TONE, daysUntil } from "@/lib/classroom.utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,6 +23,7 @@ const STATUSES = ["pending", "submitted", "graded", "late"];
 
 const FIELDS: FieldDef[] = [
   { name: "id", label: "ID", required: true, placeholder: "asgn-009", hideOnEdit: true },
+  { name: "course_id", label: "Course", type: "select", options: [], required: true },
   { name: "course", label: "Course code", required: true, placeholder: "CSE 4113" },
   { name: "course_title", label: "Course title", required: true },
   { name: "title", label: "Assignment title", required: true },
@@ -25,13 +35,6 @@ const FIELDS: FieldDef[] = [
   { name: "marks", label: "Marks", type: "number", required: true },
 ];
 
-const TONE: Record<string, string> = {
-  pending: "border-warn/40 bg-warn/10 text-warn",
-  submitted: "border-primary/40 bg-primary/10 text-primary",
-  graded: "border-ok/40 bg-ok/10 text-ok",
-  late: "border-destructive/40 bg-destructive/10 text-destructive",
-};
-
 export default function AssignmentsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -40,93 +43,216 @@ export default function AssignmentsPage() {
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [deleting, setDeleting] = useState<Assignment | null>(null);
 
-  const { data, isLoading } = useResourceList<Assignment>("assignments", { status: status || undefined });
+  const { data, isLoading } = useResourceList<Assignment>("assignments", {
+    status: status || undefined,
+  });
+  const { data: courses } = useResourceList<Course>("courses");
+  const { data: submissions } = useSubmissions();
   const { create, update, remove } = useResourceMutations<Assignment>("assignments", "Assignment");
 
-  const today = new Date().toISOString().slice(0, 10);
-  const rows = useMemo(() => [...(data ?? [])].sort((a, b) => a.deadline.localeCompare(b.deadline)), [data]);
+  const fields = useMemo(
+    () =>
+      FIELDS.map((f) =>
+        f.name === "course_id"
+          ? { ...f, options: (courses ?? []).map((c) => c.id) }
+          : f
+      ),
+    [courses]
+  );
 
-  const daysLeft = (deadline: string) =>
-    Math.round((Date.parse(deadline) - Date.parse(today)) / 86400000);
+  const courseName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of courses ?? []) map.set(c.id, `${c.code} — ${c.title}`);
+    return map;
+  }, [courses]);
+
+  const mySubmission = useMemo(() => {
+    const map = new Map<string, Submission>();
+    for (const s of submissions ?? []) {
+      if (isAdmin || s.student_id === user?.student_id) map.set(s.assignment_id, s);
+    }
+    return map;
+  }, [submissions, isAdmin, user?.student_id]);
+
+  const submissionCount = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of submissions ?? []) map.set(s.assignment_id, (map.get(s.assignment_id) ?? 0) + 1);
+    return map;
+  }, [submissions]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, Assignment[]>();
+    for (const a of [...(data ?? [])].sort((x, y) => x.deadline.localeCompare(y.deadline))) {
+      const key = a.course_id || a.course;
+      const list = map.get(key) ?? [];
+      list.push(a);
+      map.set(key, list);
+    }
+    return [...map.entries()].sort((a, b) => {
+      const soonestA = a[1][0]?.deadline ?? "";
+      const soonestB = b[1][0]?.deadline ?? "";
+      return soonestA.localeCompare(soonestB);
+    });
+  }, [data]);
+
+  const total = (data ?? []).length;
 
   return (
     <>
       <PageHeader
+        eyebrow="Academics"
         title="Assignments"
-        subtitle="Sorted by deadline, soonest first."
+        subtitle="Grouped by course, each course ordered with the soonest deadline first. Open one to hand in your work."
         action={
           isAdmin && (
-            <Button onClick={() => setCreating(true)} className="gap-2">
-              <Plus className="h-4 w-4" /> Add assignment
+            <Button onClick={() => setCreating(true)}>
+              <Plus />
+              Add assignment
             </Button>
           )
         }
       />
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Button variant={status === "" ? "default" : "outline"} size="sm" onClick={() => setStatus("")}>
-          All
-        </Button>
-        {STATUSES.map((s) => (
-          <Button key={s} variant={status === s ? "default" : "outline"} size="sm" onClick={() => setStatus(s)}>
-            {s}
-          </Button>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <FilterTabs
+          value={status}
+          onChange={setStatus}
+          options={[{ value: "", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s }))]}
+        />
+        <span className="eyebrow text-muted-foreground">
+          {total} {total === 1 ? "assignment" : "assignments"} in {grouped.length}{" "}
+          {grouped.length === 1 ? "course" : "courses"}
+        </span>
       </div>
 
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
+            <Skeleton key={i} className="h-32 w-full" />
           ))}
         </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-          No assignments.
-        </div>
+      ) : grouped.length === 0 ? (
+        <EmptyState
+          icon={NotebookPen}
+          title="No assignments"
+          description="Nothing matches this filter right now."
+        />
       ) : (
-        <div className="space-y-3">
-          {rows.map((a) => {
-            const left = daysLeft(a.deadline);
-            const overdue = left < 0 && a.status === "pending";
-            return (
-              <div key={a.id} className="rounded-xl border border-border bg-card p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <span className="rounded bg-secondary px-1.5 py-0.5 text-[11px] font-medium">{a.course}</span>
-                      <span className={`rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase ${TONE[a.status]}`}>
-                        {a.status}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{a.marks} marks</span>
-                    </div>
-                    <h3 className="font-medium">{a.title}</h3>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{a.description}</p>
-                    <div className="mt-2 text-xs text-muted-foreground">Submit via {a.submission_platform}</div>
-                  </div>
-
-                  <div className="flex shrink-0 items-start gap-2">
-                    <div className="text-right">
-                      <div className="text-sm font-medium tabular-nums">{a.deadline}</div>
-                      <div className={`text-xs ${overdue ? "text-destructive" : left <= 3 ? "text-warn" : "text-muted-foreground"}`}>
-                        {overdue ? `${Math.abs(left)}d overdue` : left === 0 ? "due today" : `${left}d left`}
-                      </div>
-                    </div>
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setEditing(a)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleting(a)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+        <div className="space-y-8">
+          {grouped.map(([key, list]) => (
+            <section key={key}>
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                {courseName.has(key) ? (
+                  <Link
+                    to={`/courses/${key}`}
+                    className="text-[15px] font-semibold tracking-tight hover:underline"
+                  >
+                    {courseName.get(key)}
+                  </Link>
+                ) : (
+                  <h2 className="text-[15px] font-semibold tracking-tight">{list[0].course}</h2>
+                )}
+                <div className="rule-dotted h-px min-w-8 flex-1" />
+                <span className="tnum text-[11px] text-muted-foreground">
+                  {list.length} {list.length === 1 ? "item" : "items"}
+                </span>
               </div>
-            );
-          })}
+
+              <div className="space-y-3">
+                {list.map((a) => {
+                  const mine = mySubmission.get(a.id);
+                  const left = daysUntil(a.deadline);
+                  const overdue = left < 0 && !mine;
+                  const tone = mine ? SUBMISSION_TONE[mine.status] : overdue ? "red" : "amber";
+                  return (
+                    <article
+                      key={a.id}
+                      className={`rounded-lg border border-ink/12 border-l-[3px] bg-card p-5 ${TONE_EDGE[tone]}`}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                            <Badge>{a.course}</Badge>
+                            {mine ? (
+                              <StatusPill tone={SUBMISSION_TONE[mine.status]}>
+                                {SUBMISSION_LABEL[mine.status]}
+                              </StatusPill>
+                            ) : (
+                              <StatusPill tone={overdue ? "red" : "amber"}>
+                                {isAdmin ? "Open" : "Not turned in"}
+                              </StatusPill>
+                            )}
+                            <span className="tnum text-[11px] text-muted-foreground">
+                              {a.marks} marks
+                            </span>
+                            {isAdmin && (
+                              <span className="tnum text-[11px] text-muted-foreground">
+                                · {submissionCount.get(a.id) ?? 0} submitted
+                              </span>
+                            )}
+                          </div>
+
+                          <Link
+                            to={`/assignments/${a.id}`}
+                            className="text-[15px] font-semibold tracking-tight hover:underline"
+                          >
+                            {a.title}
+                          </Link>
+                          <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+                            {a.description}
+                          </p>
+
+                          <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                            <Send className="h-3 w-3" />
+                            Submit via {a.submission_platform}
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-start gap-3">
+                          <div className="rounded-md border border-ink/12 bg-paper-deep/50 px-3 py-2 text-right">
+                            <div className="eyebrow text-muted-foreground">Deadline</div>
+                            <div className="tnum mt-1.5 text-[13px] font-semibold">{a.deadline}</div>
+                            <div
+                              className={`tnum mt-0.5 text-[11px] font-medium ${
+                                overdue
+                                  ? "text-[#b91c1c]"
+                                  : left <= 3 && !mine
+                                    ? "text-[#8a6608]"
+                                    : "text-muted-foreground"
+                              }`}
+                            >
+                              {overdue
+                                ? `${Math.abs(left)}d overdue`
+                                : left === 0
+                                  ? "due today"
+                                  : `${left}d left`}
+                            </div>
+                          </div>
+
+                          {isAdmin && (
+                            <RowActions
+                              label={a.title}
+                              onEdit={() => setEditing(a)}
+                              onDelete={() => setDeleting(a)}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border-t border-ink/10 pt-3">
+                        <Link
+                          to={`/assignments/${a.id}`}
+                          className="text-[12px] font-medium text-primary hover:underline"
+                        >
+                          {isAdmin ? "Review submissions →" : mine ? "View or resubmit →" : "Open and hand in →"}
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
@@ -134,20 +260,27 @@ export default function AssignmentsPage() {
         open={creating}
         onOpenChange={setCreating}
         title="Add an assignment"
-        fields={FIELDS}
+        description="Pick the course it belongs to so it lands in the right classroom stream."
+        fields={fields}
         submitting={create.isPending}
-        onSubmit={(v: FormValues) => create.mutate(v as Partial<Assignment>, { onSuccess: () => setCreating(false) })}
+        onSubmit={(v: FormValues) =>
+          create.mutate(v as Partial<Assignment>, { onSuccess: () => setCreating(false) })
+        }
       />
 
       <FormDialog
         open={Boolean(editing)}
         onOpenChange={(o) => !o && setEditing(null)}
         title="Edit assignment"
-        fields={FIELDS}
+        fields={fields}
         initial={editing ? (editing as unknown as FormValues) : undefined}
         submitting={update.isPending}
         onSubmit={(v: FormValues) =>
-          editing && update.mutate({ id: editing.id, payload: v as Partial<Assignment> }, { onSuccess: () => setEditing(null) })
+          editing &&
+          update.mutate(
+            { id: editing.id, payload: v as Partial<Assignment> },
+            { onSuccess: () => setEditing(null) }
+          )
         }
       />
 

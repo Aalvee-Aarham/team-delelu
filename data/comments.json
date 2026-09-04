@@ -1,0 +1,98 @@
+[
+  {
+    "id": "cmt-seed-001",
+    "target_type": "assignment",
+    "target_id": "asgn-001",
+    "course_id": "crs-4113",
+    "parent_id": "",
+    "author_id": "20-00000",
+    "author_name": "Demo Student",
+    "author_role": "student",
+    "body": "Are we allowed to use numpy for the probability tables, or does 'from scratch' rule that out too?",
+    "created_at": "2026-09-01T10:15:00.000Z"
+  },
+  {
+    "id": "cmt-seed-002",
+    "target_type": "assignment",
+    "target_id": "asgn-001",
+    "course_id": "crs-4113",
+    "parent_id": "cmt-seed-001",
+    "author_id": "20-00001",
+    "author_name": "Demo Admin",
+    "author_role": "admin",
+    "body": "numpy is fine for array maths. The ban is on sklearn's GaussianNB or any library that hands you the fitted classifier.",
+    "created_at": "2026-09-01T11:02:00.000Z"
+  },
+  {
+    "id": "cmt-seed-003",
+    "target_type": "assignment",
+    "target_id": "asgn-002",
+    "course_id": "crs-4130",
+    "parent_id": "",
+    "author_id": "20-40511",
+    "author_name": "Farhan Ahmed",
+    "author_role": "student",
+    "body": "Flex is throwing 'undefined reference to yywrap' when I link. Anyone else hitting this?",
+    "created_at": "2026-09-02T16:40:00.000Z"
+  },
+  {
+    "id": "cmt-seed-004",
+    "target_type": "assignment",
+    "target_id": "asgn-002",
+    "course_id": "crs-4130",
+    "parent_id": "cmt-seed-003",
+    "author_id": "20-00001",
+    "author_name": "Demo Admin",
+    "author_role": "admin",
+    "body": "Add %option noyywrap at the top of your .l file, or link with -lfl. Either works for this assignment.",
+    "created_at": "2026-09-02T17:10:00.000Z"
+  },
+  {
+    "id": "cmt-seed-005",
+    "target_type": "course",
+    "target_id": "crs-4137",
+    "course_id": "crs-4137",
+    "parent_id": "",
+    "author_id": "20-40532",
+    "author_name": "Sakibul Hassan",
+    "author_role": "student",
+    "body": "Will the midterm cover genetic algorithms, or does it stop at fuzzy inference?",
+    "created_at": "2026-09-03T09:05:00.000Z"
+  },
+  {
+    "id": "cmt-seed-006",
+    "target_type": "course",
+    "target_id": "crs-4137",
+    "course_id": "crs-4137",
+    "parent_id": "cmt-seed-005",
+    "author_id": "20-00001",
+    "author_name": "Demo Admin",
+    "author_role": "admin",
+    "body": "Midterm stops after fuzzy inference systems. GA and hybrid models are final-exam material.",
+    "created_at": "2026-09-03T09:48:00.000Z"
+  },
+  {
+    "id": "cmt-seed-007",
+    "target_type": "event",
+    "target_id": "evt-001",
+    "course_id": "",
+    "parent_id": "",
+    "author_id": "20-40498",
+    "author_name": "Tasnia Islam",
+    "author_role": "student",
+    "body": "Is the team size capped at four, and can we mix batches?",
+    "created_at": "2026-09-02T12:00:00.000Z"
+  },
+  {
+    "id": "cmt-seed-008",
+    "target_type": "event",
+    "target_id": "evt-001",
+    "course_id": "",
+    "parent_id": "cmt-seed-007",
+    "author_id": "20-00001",
+    "author_name": "Demo Admin",
+    "author_role": "admin",
+    "body": "Four is the cap and mixed batches are encouraged. Register each member separately so the headcount stays accurate.",
+    "created_at": "2026-09-02T12:35:00.000Z"
+  }
+]

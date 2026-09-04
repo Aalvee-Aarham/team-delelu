@@ -10,6 +10,8 @@
 - dotenv 16 — load `.env` in development
 - @aws-sdk/client-polly — text-to-speech for the agent's spoken replies
 - @aws-sdk/client-transcribe-streaming — speech-to-text for the user's spoken questions
+- multer 2 — multipart parsing for assignment submissions and event cover uploads
+- uploadthing 7 — UTApi server SDK, used for admin event cover images
 - tsx 4 (dev) — run the TypeScript backend without a build step
 - typescript 5 (dev) — type checking
 

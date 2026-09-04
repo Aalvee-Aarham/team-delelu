@@ -3,6 +3,11 @@ import { z } from "zod";
 
 dotenv.config();
 
+const optionalSecret = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.string().min(1).optional()
+);
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -20,6 +25,11 @@ const envSchema = z.object({
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
   AWS_REGION: z.string().min(1).default("us-east-1"),
+  CLOUDINARY_CLOUD_NAME: optionalSecret,
+  CLOUDINARY_API_KEY: optionalSecret,
+  CLOUDINARY_API_SECRET: optionalSecret,
+  UPLOADTHING_TOKEN: optionalSecret,
+  MAX_UPLOAD_MB: z.coerce.number().int().positive().default(16),
 });
 
 const parsed = envSchema.safeParse(process.env);

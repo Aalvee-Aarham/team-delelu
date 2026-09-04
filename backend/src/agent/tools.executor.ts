@@ -4,6 +4,8 @@ import { Booking } from "../models/booking.model";
 import { Event } from "../models/event.model";
 import { Announcement } from "../models/announcement.model";
 import { Assignment } from "../models/assignment.model";
+import { Course } from "../models/course.model";
+import { Submission } from "../models/submission.model";
 import { AuthPayload } from "../middleware/auth";
 import { TOOLS_BY_NAME } from "./tools.schema";
 import { findAvailableRooms, findRoomConflict, attachBookings, timesOverlap } from "../services/rooms.service";
@@ -63,6 +65,8 @@ const PROJECTION = {
   assignment: { _id: 0, id: 1, course: 1, title: 1, deadline: 1, status: 1, marks: 1, submission_platform: 1 },
   announcement: { _id: 0, id: 1, title: 1, body: 1, date: 1, priority: 1, posted_by: 1, expires: 1 },
   event: { _id: 0, id: 1, name: 1, description: 1, date: 1, end_date: 1, start_time: 1, end_time: 1, venue: 1, organizer: 1, capacity: 1, registered: 1, status: 1 },
+  course: { _id: 0, id: 1, code: 1, title: 1, instructor: 1, section: 1, room: 1, term: 1 },
+  submission: { _id: 0, id: 1, assignment_id: 1, assignment_title: 1, course_code: 1, student_id: 1, student_name: 1, status: 1, grade: 1, late: 1, submitted_at: 1, feedback: 1 },
 } as const;
 
 function truncate(text: string, max = 160): string {
@@ -123,6 +127,26 @@ export async function executeTool(name: string, rawArgs: unknown, auth: AuthPayl
       if (args.due_before) filter.deadline = { $lte: args.due_before };
       const docs = await Assignment.find(filter, PROJECTION.assignment).sort({ deadline: 1 }).lean();
       return { ok: true, data: docs, provenance: prov("assignments", docs) };
+    }
+
+    case "get_courses": {
+      const filter: Record<string, unknown> = {};
+      if (args.code) filter.code = { $regex: args.code, $options: "i" };
+      const docs = await Course.find(filter, PROJECTION.course).sort({ code: 1 }).lean();
+      return { ok: true, data: docs, provenance: prov("courses", docs) };
+    }
+
+    case "get_submissions": {
+      const filter: Record<string, unknown> =
+        auth.role === "admin" ? {} : { student_id: auth.student_id };
+      if (args.assignment_id) filter.assignment_id = args.assignment_id;
+      if (args.course) filter.course_code = { $regex: args.course, $options: "i" };
+      if (args.status) filter.status = args.status;
+      const docs = await Submission.find(filter, PROJECTION.submission)
+        .sort({ submitted_at: -1 })
+        .limit(40)
+        .lean();
+      return { ok: true, data: docs, provenance: prov("submissions", docs) };
     }
 
     case "get_announcements": {

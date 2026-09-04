@@ -4,6 +4,7 @@ import { app } from "./app";
 import { connectDb } from "./db";
 import { runSeed } from "./seed";
 
+
 async function start() {
   await connectDb();
   console.log("MongoDB connected");

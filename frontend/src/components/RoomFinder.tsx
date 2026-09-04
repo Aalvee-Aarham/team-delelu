@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, X } from "lucide-react";
+import { CircleCheck, Search, SlidersHorizontal, X } from "lucide-react";
 import { api } from "@/lib/axios";
+import { Panel } from "@/components/Panel";
+import { FilterTabs } from "@/components/FilterTabs";
+import { StatusPill } from "@/components/StatusPill";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,40 +50,40 @@ export function RoomFinder({
   });
 
   return (
-    <div className="mb-4 rounded-xl border border-border bg-card p-4">
-      <div className="mb-3 flex flex-wrap items-end gap-3">
-        <div className="flex gap-2">
-          <Button
-            variant={filters.type === "" ? "default" : "outline"}
-            size="sm"
-            onClick={() => onFiltersChange({ ...filters, type: "" })}
-          >
-            All
-          </Button>
-          {TYPES.map((t) => (
-            <Button
-              key={t}
-              variant={filters.type === t ? "default" : "outline"}
-              size="sm"
-              onClick={() => onFiltersChange({ ...filters, type: t })}
-            >
-              {t}
-            </Button>
-          ))}
+    <Panel
+      eyebrow="Room finder"
+      title="Filter and check availability"
+      description="A timetabled class blocks a room just as a booking does — both are counted here."
+      icon={SlidersHorizontal}
+      tone="blue"
+      className="mb-6"
+      bodyClassName="p-5 space-y-5"
+    >
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="grid gap-2">
+          <span className="text-xs leading-none font-medium text-muted-foreground">Room type</span>
+          <FilterTabs
+            value={filters.type}
+            onChange={(type) => onFiltersChange({ ...filters, type })}
+            options={[{ value: "", label: "All" }, ...TYPES.map((t) => ({ value: t, label: t }))]}
+          />
         </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs">Min capacity</Label>
+        <div className="grid gap-2">
+          <Label htmlFor="min-capacity">Min capacity</Label>
           <Input
-            className="h-8 w-28"
+            id="min-capacity"
+            className="w-28"
             type="number"
+            placeholder="30"
             value={filters.minCapacity}
             onChange={(e) => onFiltersChange({ ...filters, minCapacity: e.target.value })}
           />
         </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs">Equipment</Label>
+        <div className="grid gap-2">
+          <Label htmlFor="equipment">Equipment</Label>
           <Input
-            className="h-8 w-52"
+            id="equipment"
+            className="w-56"
             placeholder="projector, AC"
             value={filters.equipment}
             onChange={(e) => onFiltersChange({ ...filters, equipment: e.target.value })}
@@ -88,65 +91,82 @@ export function RoomFinder({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 border-t border-border pt-3">
-        <div className="grid gap-1.5">
-          <Label className="text-xs">Date</Label>
-          <Input className="h-8" type="date" value={check.date} onChange={(e) => setCheck({ ...check, date: e.target.value })} />
-        </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs">From</Label>
+      <div className="flex flex-wrap items-end gap-4 border-t border-ink/10 pt-5">
+        <div className="grid gap-2">
+          <Label htmlFor="check-date">Date</Label>
           <Input
-            className="h-8 w-24"
+            id="check-date"
+            type="date"
+            className="w-44"
+            value={check.date}
+            onChange={(e) => setCheck({ ...check, date: e.target.value })}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="check-from">From</Label>
+          <Input
+            id="check-from"
+            className="w-24"
             placeholder="14:00"
             value={check.start_time}
             onChange={(e) => setCheck({ ...check, start_time: e.target.value })}
           />
         </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs">To</Label>
+        <div className="grid gap-2">
+          <Label htmlFor="check-to">To</Label>
           <Input
-            className="h-8 w-24"
+            id="check-to"
+            className="w-24"
             placeholder="16:00"
             value={check.end_time}
             onChange={(e) => setCheck({ ...check, end_time: e.target.value })}
           />
         </div>
         <Button
-          size="sm"
-          className="gap-2"
           disabled={!check.date || !check.start_time || !check.end_time}
           onClick={() => setCheckKey((k) => k + 1)}
         >
-          <Search className="h-4 w-4" /> Check availability
+          <Search />
+          Check availability
         </Button>
         {checkKey > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setCheckKey(0)}>
-            <X className="h-4 w-4" /> Clear
+          <Button variant="ghost" onClick={() => setCheckKey(0)}>
+            <X />
+            Clear
           </Button>
         )}
       </div>
 
       {checkKey > 0 && availability.data && (
-        <div className="mt-3 rounded-lg border border-border bg-background p-3 text-sm">
-          <div className="mb-2 font-medium text-ok">
-            {availability.data.available.length} rooms free on {check.date}, {check.start_time}–{check.end_time}
+        <div className="rounded-md border border-ink/12 bg-paper-deep/50 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <CircleCheck className="h-4 w-4 text-ok" />
+            <span className="text-[13px] font-semibold">
+              {availability.data.available.length} rooms free
+            </span>
+            <span className="tnum text-[12px] text-muted-foreground">
+              {check.date}, {check.start_time}–{check.end_time}
+            </span>
           </div>
+
           <div className="flex flex-wrap gap-1.5">
             {availability.data.available.map((r) => (
-              <span key={r.room_number} className="rounded border border-ok/40 bg-ok/10 px-2 py-0.5 text-xs text-ok">
-                {r.room_number} ({r.capacity})
-              </span>
+              <StatusPill key={r.room_number} tone="green">
+                {r.room_number} · {r.capacity}
+              </StatusPill>
             ))}
           </div>
+
           {availability.data.conflicts.length > 0 && (
-            <details className="mt-3">
-              <summary className="cursor-pointer text-xs text-muted-foreground">
-                {availability.data.conflicts.length} busy — why?
+            <details className="mt-4">
+              <summary className="cursor-pointer text-[12px] font-medium text-muted-foreground hover:text-foreground">
+                {availability.data.conflicts.length} busy — see why
               </summary>
-              <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+              <ul className="mt-2.5 space-y-1.5 text-[12px] text-muted-foreground">
                 {availability.data.conflicts.map((c) => (
                   <li key={c.room_number}>
-                    <span className="font-medium text-foreground">{c.room_number}</span> — {c.reason.detail}
+                    <span className="font-semibold text-foreground">{c.room_number}</span> —{" "}
+                    {c.reason.detail}
                   </li>
                 ))}
               </ul>
@@ -154,6 +174,6 @@ export function RoomFinder({
           )}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

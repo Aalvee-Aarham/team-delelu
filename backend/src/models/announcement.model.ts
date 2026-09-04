@@ -2,6 +2,7 @@ import { Schema, model } from "mongoose";
 
 export interface AnnouncementDoc {
   id: string;
+  course_id: string;
   title: string;
   body: string;
   date: string;
@@ -12,6 +13,7 @@ export interface AnnouncementDoc {
 
 const announcementSchema = new Schema<AnnouncementDoc>({
   id: { type: String, required: true, unique: true },
+  course_id: { type: String, default: "" },
   title: { type: String, required: true },
   body: { type: String, required: true },
   date: { type: String, required: true },
@@ -21,5 +23,6 @@ const announcementSchema = new Schema<AnnouncementDoc>({
 }, { versionKey: false });
 
 announcementSchema.index({ priority: 1, expires: 1 });
+announcementSchema.index({ course_id: 1 });
 
 export const Announcement = model<AnnouncementDoc>("Announcement", announcementSchema);

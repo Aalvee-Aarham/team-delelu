@@ -24,6 +24,10 @@ export function useChangeStream() {
     source.onmessage = (raw) => {
       const event = JSON.parse(raw.data) as ChangeEvent;
       queryClient.invalidateQueries({ queryKey: [event.collection] });
+      if (event.collection === "submissions" || event.collection === "courses") {
+        queryClient.invalidateQueries({ queryKey: ["courses"] });
+        queryClient.invalidateQueries({ queryKey: ["assignments"] });
+      }
       for (const fn of listeners) fn(event);
     };
 

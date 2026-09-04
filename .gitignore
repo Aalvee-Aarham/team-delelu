@@ -29,6 +29,9 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Uploaded files (local fallback storage)
+backend/uploads/
+
 # Local scratch
 backend/dbcheck.cjs
 

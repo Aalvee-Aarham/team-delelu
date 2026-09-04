@@ -6,7 +6,8 @@
     "date": "2026-09-04",
     "priority": "high",
     "posted_by": "Prof. Dr. Md. Shahriar Mahbub",
-    "expires": "2026-09-07"
+    "expires": "2026-09-07",
+    "course_id": "crs-4113"
   },
   {
     "id": "ann-002",
@@ -15,7 +16,8 @@
     "date": "2026-09-03",
     "priority": "high",
     "posted_by": "Prof. Dr. Faisal Muhammad Shah",
-    "expires": "2026-09-20"
+    "expires": "2026-09-20",
+    "course_id": "crs-4137"
   },
   {
     "id": "ann-003",
@@ -24,7 +26,8 @@
     "date": "2026-09-02",
     "priority": "medium",
     "posted_by": "CSE Department",
-    "expires": "2026-09-10"
+    "expires": "2026-09-10",
+    "course_id": "crs-4111"
   },
   {
     "id": "ann-004",
@@ -33,7 +36,8 @@
     "date": "2026-09-03",
     "priority": "low",
     "posted_by": "Library Authority",
-    "expires": "2026-09-05"
+    "expires": "2026-09-05",
+    "course_id": ""
   },
   {
     "id": "ann-005",
@@ -42,7 +46,8 @@
     "date": "2026-09-01",
     "priority": "high",
     "posted_by": "Ms. Nusrat Jahan",
-    "expires": "2026-09-10"
+    "expires": "2026-09-10",
+    "course_id": "crs-4130"
   },
   {
     "id": "ann-006",
@@ -51,7 +56,8 @@
     "date": "2026-09-01",
     "priority": "medium",
     "posted_by": "AUSTPIC",
-    "expires": "2026-09-08"
+    "expires": "2026-09-08",
+    "course_id": ""
   },
   {
     "id": "ann-007",
@@ -60,7 +66,8 @@
     "date": "2026-08-30",
     "priority": "low",
     "posted_by": "AUST Administration",
-    "expires": "2026-12-31"
+    "expires": "2026-12-31",
+    "course_id": ""
   },
   {
     "id": "ann-008",
@@ -69,6 +76,7 @@
     "date": "2026-09-04",
     "priority": "high",
     "posted_by": "Maintenance Department",
-    "expires": "2026-09-06"
+    "expires": "2026-09-06",
+    "course_id": ""
   }
 ]

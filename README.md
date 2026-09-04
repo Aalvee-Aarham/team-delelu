@@ -4,7 +4,9 @@ An intelligent university platform: a full campus data manager plus an AI agent 
 
 ## Project Overview
 
-CampusOS has two halves that share one source of truth. The **dashboard** manages all five campus systems — schedules, rooms, events, announcements and assignments — with full add / edit / delete on every one. Changes are written to MongoDB and pushed to every open tab over Server-Sent Events, so the interface updates without a refresh and survives a reload.
+CampusOS has two halves that share one source of truth. The **dashboard** manages every campus system — courses, schedules, rooms, events, announcements and assignments — with full add / edit / delete on each. Changes are written to MongoDB and pushed to every open tab over Server-Sent Events, so the interface updates without a refresh and survives a reload.
+
+On top of that sits a **Google Classroom-style teaching flow**. Admins create a course, then post classwork and notices into it; each course has its own stream, classwork list, roster and submission inbox. Students open an assignment, hand in a written answer and any files — images, PDFs, notebooks, source — and can resubmit until it is reviewed. Admins see every submission grouped by course and accept it, return it for edits, or reject it with a grade and written feedback. Students and admins discuss any assignment, notice, course or event in one-level comment threads, with instructor replies marked as such.
 
 The **AI agent** answers questions and takes actions over that same database using genuine tool calling: 16 typed tools that query and mutate MongoDB directly. It never answers from a cached copy of the seed data. It reads announcements alongside the timetable (so a rescheduled class is reported correctly), refuses actions the signed-in user is not authorised to perform, and asks for clarification instead of guessing when a request is vague.
 
@@ -19,6 +21,8 @@ Two details worth trying. **Live Truth:** every answer records which records it 
 | Auth | JWT (`jsonwebtoken`) + `bcryptjs`, role-based |
 | Frontend | React 19, Vite, TypeScript, TanStack Query, Tailwind 4, shadcn/ui |
 | Realtime | Server-Sent Events |
+| File storage | Cloudinary (student submissions), UploadThing (admin images), disk fallback |
+| Event imagery | Unsplash URLs, seeded into the demo database |
 | LLM | Groq `openai/gpt-oss-120b` (primary) → Google `gemini-3.8-flash` (fallback) |
 
 ## Prerequisites
@@ -63,6 +67,18 @@ All are validated by a zod schema at startup — the server exits naming any mis
 | `GROQ_API_KEY_1`, `GROQ_API_KEY_2` | Groq keys, tried first and second |
 | `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2` | Gemini keys, used if both Groq keys fail |
 | `LLM_TIMEOUT_MS` | Per-provider timeout before failing over (default 12000) |
+| `UPLOADTHING_TOKEN` | UploadThing v7 token; admin image uploads (optional) |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Cloudinary credentials; student submission files (optional) |
+| `MAX_UPLOAD_MB` | Per-file upload cap (default 16) |
+
+### File uploads
+
+Uploads degrade rather than break. Student submission files go to **Cloudinary** and admin
+images go to **UploadThing**; if a provider's credentials are missing, that route writes to
+`backend/uploads/` instead and serves the file from `/api/uploads/files/<name>`. `GET
+/api/uploads/config` reports which provider is actually live, and the UI shows it on the
+upload control. Fill the Cloudinary keys in and submission files move to the CDN with no
+code change.
 
 No real keys are committed. `backend/.env` is gitignored.
 

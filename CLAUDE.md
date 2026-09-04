@@ -6,6 +6,7 @@ Campus data manager + AI agent with real tool calling over live MongoDB data.
 Node 20, Express 4, TypeScript 5, Mongoose 8, zod 3, jsonwebtoken 9, bcryptjs 2 (backend)
 React 19, Vite 8, TypeScript 6, @tanstack/react-query 5, axios 1, Tailwind 4, shadcn/ui (frontend)
 Groq (openai/gpt-oss-120b) primary LLM, Gemini (gemini-3.8-flash) fallback
+Cloudinary (submission files) + UploadThing (admin images), both falling back to disk
 
 ## Run
 - `npm run dev` — backend (4000) + frontend (5173) concurrently, from root
