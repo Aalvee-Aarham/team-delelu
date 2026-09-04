@@ -204,3 +204,25 @@ Scope requested after the hackathon deadline, on branch `ai-agent-improvement`. 
 1. **Which tiers to build now?** → Tier A + Tier B. Tier C (rich widgets, agent state indicator, optimistic UI/undo) deferred, not scheduled.
 2. **Charting library?** → `recharts`, added to `.claude/rules/dependencies.md`.
 3. **Bulk operations — confirmation flow?** → preview-then-confirm: first call returns affected count/ids with no write, a second explicit confirm message performs it. Already how T45 is scoped.
+
+---
+
+## 11. Post-Submission — Voice Feature (AWS Polly + Transcribe)
+
+Scope: add spoken interaction to the chat page — the user can speak a question instead of typing, and hear the agent's reply spoken back. Two independent AWS services, both behind new backend routes so the AWS SDK and credentials never reach the browser.
+
+**Backend**
+- `voice.service.ts`: `synthesizeSpeech(text)` calls Amazon Polly `SynthesizeSpeechCommand` (mp3 output, a single default voice) and returns the audio buffer; `transcribeAudio(buffer, mimeType)` feeds the recorded clip through `@aws-sdk/client-transcribe-streaming`'s `TranscribeStreamingClient` as a single async-iterable chunk and collects the final transcript — no S3 bucket, no batch-job polling, so the round trip stays request/response like every other route here.
+- `POST /api/voice/speak` — `{ text }` → `audio/mpeg` stream. `POST /api/voice/transcribe` — a recorded audio blob (multipart or raw body) → `{ text }`. Both behind `requireAuth`, same as every other route.
+- New env vars `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` (default `us-east-1`), validated in `env.ts` the same way the LLM keys are, added to `.env.example` as placeholders only. **The real key pasted in chat is written straight to `backend/.env` (gitignored) and never repeated in any commit, log, or reply.**
+
+**Frontend**
+- A mic button next to the chat input using the browser `MediaRecorder` API to record a short clip, POST it to `/api/voice/transcribe`, and drop the returned text into the input (or send it directly, mirroring how a starter chip works).
+- A speaker button on each agent reply bubble that calls `/api/voice/speak` and plays the returned mp3 via an `<audio>` element — reuses the existing message-bubble structure in `ChatPage.tsx`, no new page.
+
+### Open Questions — resolved
+
+1. **Direction?** → both: speech-to-text for the user's question, text-to-speech for the agent's reply. *(confirmed)*
+2. **AWS region?** → `us-east-1` default, overridable via `AWS_REGION` env var — no region was specified with the key, and this is a reasonable default with full Polly/Transcribe coverage.
+3. **Realtime streaming transcription vs. record-then-send?** → record-then-send (one clip per question). True streaming transcription (live partial results while speaking) needs a persistent WebSocket from the browser and is a materially bigger frontend change for a hackathon-scale voice feature; record-then-send reuses the existing request/response route pattern everywhere else in this backend.
+4. **Which Polly voice?** → a single sensible default (e.g. `Joanna`, neural engine) with no user-facing voice picker in this pass — can be added later as a query param without touching the route contract.

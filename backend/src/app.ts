@@ -13,6 +13,7 @@ import { meRouter } from "./routes/me.routes";
 import { agentRouter } from "./routes/agent.routes";
 import { streamRouter } from "./routes/stream.routes";
 import { analyticsRouter } from "./routes/analytics.routes";
+import { voiceRouter } from "./routes/voice.routes";
 
 export const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/me", meRouter);
 app.use("/api/agent", agentRouter);
 app.use("/api/stream", streamRouter);
 app.use("/api/analytics", analyticsRouter);
+app.use("/api/voice", voiceRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

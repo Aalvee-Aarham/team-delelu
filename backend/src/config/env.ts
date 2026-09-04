@@ -17,6 +17,9 @@ const envSchema = z.object({
   GEMINI_API_KEY_1: z.string().min(1),
   GEMINI_API_KEY_2: z.string().min(1),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(12000),
+  AWS_ACCESS_KEY_ID: z.string().min(1),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1),
+  AWS_REGION: z.string().min(1).default("us-east-1"),
 });
 
 const parsed = envSchema.safeParse(process.env);

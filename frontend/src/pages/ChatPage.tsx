@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Send, RefreshCw, AlertCircle, Sparkles, BarChart3 } from "lucide-react";
+import { Send, RefreshCw, AlertCircle, Sparkles, BarChart3, Mic, Square, Volume2, Loader2 } from "lucide-react";
 import { api, apiErrorMessage } from "@/lib/axios";
 import { onCampusChange } from "@/hooks/useChangeStream";
 import { useAuth } from "@/context/AuthContext";
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToolTrace } from "@/components/ToolTrace";
 import { AnalyticsChart } from "@/components/AnalyticsChart";
+import { VoiceRecorder, transcribeAudio, speakText } from "@/lib/voice";
+import { toast } from "sonner";
 
 interface Turn {
   id: number;
@@ -20,6 +22,8 @@ interface Turn {
   previous?: string;
   refreshing?: boolean;
   chart?: CampusAnalytics | null;
+  audioUrl?: string;
+  speaking?: boolean;
 }
 
 const STARTERS = [
@@ -45,8 +49,11 @@ export default function ChatPage() {
   const { user } = useAuth();
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const nextId = useRef(1);
+  const recorderRef = useRef<VoiceRecorder | null>(null);
 
   const ask = useMutation({
     mutationFn: async (payload: { messages: { role: "user" | "assistant"; content: string }[] }) =>
@@ -126,6 +133,54 @@ export default function ChatPage() {
       );
   };
 
+  const toggleRecording = async () => {
+    if (isRecording) {
+      const recorder = recorderRef.current;
+      if (!recorder) return;
+      setIsRecording(false);
+      setTranscribing(true);
+      try {
+        const pcm = recorder.stop();
+        const text = await transcribeAudio(pcm);
+        if (text) {
+          send(text);
+        } else {
+          toast.error("Didn't catch any speech — try again");
+        }
+      } catch (err) {
+        toast.error(apiErrorMessage(err));
+      } finally {
+        setTranscribing(false);
+        recorderRef.current = null;
+      }
+      return;
+    }
+    try {
+      const recorder = new VoiceRecorder();
+      await recorder.start();
+      recorderRef.current = recorder;
+      setIsRecording(true);
+    } catch {
+      toast.error("Microphone access is required to record a question");
+    }
+  };
+
+  const speak = async (turn: Turn) => {
+    if (turn.audioUrl) {
+      new Audio(turn.audioUrl).play();
+      return;
+    }
+    setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, speaking: true } : x)));
+    try {
+      const url = await speakText(turn.answer);
+      setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, audioUrl: url, speaking: false } : x)));
+      new Audio(url).play();
+    } catch (err) {
+      toast.error(apiErrorMessage(err));
+      setTurns((t) => t.map((x) => (x.id === turn.id ? { ...x, speaking: false } : x)));
+    }
+  };
+
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
       <div className="mb-4">
@@ -188,8 +243,20 @@ export default function ChatPage() {
                       </div>
                     )}
 
-                    <div className={`whitespace-pre-wrap leading-relaxed ${turn.stale ? "text-muted-foreground line-through decoration-warn/60" : ""}`}>
-                      {turn.answer}
+                    <div className="flex items-start gap-2">
+                      <div className={`whitespace-pre-wrap leading-relaxed ${turn.stale ? "text-muted-foreground line-through decoration-warn/60" : ""}`}>
+                        {turn.answer}
+                      </div>
+                      {!turn.stale && (
+                        <button
+                          onClick={() => speak(turn)}
+                          disabled={turn.speaking}
+                          title="Play spoken reply"
+                          className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-primary disabled:opacity-50"
+                        >
+                          {turn.speaking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        </button>
+                      )}
                     </div>
 
                     {turn.stale && (
@@ -240,10 +307,19 @@ export default function ChatPage() {
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about classes, rooms, events, deadlines…"
-          disabled={ask.isPending}
+          placeholder={isRecording ? "Listening…" : transcribing ? "Transcribing…" : "Ask about classes, rooms, events, deadlines…"}
+          disabled={ask.isPending || isRecording || transcribing}
         />
-        <Button type="submit" disabled={ask.isPending || !input.trim()} className="gap-2">
+        <Button
+          type="button"
+          variant={isRecording ? "destructive" : "outline"}
+          onClick={toggleRecording}
+          disabled={ask.isPending || transcribing}
+          className="gap-2"
+        >
+          {transcribing ? <Loader2 className="h-4 w-4 animate-spin" /> : isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        </Button>
+        <Button type="submit" disabled={ask.isPending || !input.trim() || isRecording || transcribing} className="gap-2">
           <Send className="h-4 w-4" />
           Send
         </Button>

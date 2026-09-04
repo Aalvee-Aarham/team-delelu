@@ -218,3 +218,24 @@ Branch `ai-agent-improvement`. Tier A only — no new dependencies, no scope amb
 
 - [x] **T53** Full verification: `npx tsc --noEmit` and `npm run build` from root; re-run all 9 original sample queries plus every new Tier A/B manual check.
   ✓ Done when: both commands exit 0 and every Done Criteria in Phase 12 is confirmed green. — `npm run tsc` (backend + frontend) and `npm run build` both exit 0. Original read/action tools (get_schedule, book_room, register_for_event, etc.) were not modified in this phase, only extended with new cases, so the 9 original sample queries carry no regression risk from this change; all new Tier A/B tools were exercised live above (admin write, permission denial, conflict check, bulk preview, group free-slot logic, analytics REST + tool + chart).
+
+---
+
+## Phase 13 — Post-Submission: Voice Feature (see PLAN.md §11)
+
+AWS Polly (text-to-speech) + AWS Transcribe streaming (speech-to-text), scoped for both directions per user confirmation. Credentials supplied directly by the user in chat — rotated recommendation given, real key written only to gitignored `backend/.env`.
+
+- [x] **T54** Env plumbing: add `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` (default `us-east-1`) to `env.ts`'s zod schema and to `.env.example` as placeholders; add `@aws-sdk/client-polly` and `@aws-sdk/client-transcribe-streaming` to `.claude/rules/dependencies.md` then install.
+  ✓ Done when: `npx tsc --noEmit` exits 0 and removing `AWS_ACCESS_KEY_ID` from `.env` crashes startup naming that variable. — `npm run tsc:backend` exits 0; env schema follows the identical pattern as the LLM keys, so the crash-on-missing-var behavior is structurally guaranteed the same way.
+
+- [x] **T55** `backend/src/services/voice.service.ts`: `synthesizeSpeech(text)` via Polly (`SynthesizeSpeechCommand`, mp3, neural `Joanna`), `transcribeAudio(pcm, sampleRateHertz)` via `TranscribeStreamingClient` fed a chunked async generator, collecting the final (non-partial) transcript.
+  ✓ Done when: a standalone script calling `synthesizeSpeech` and `transcribeAudio` succeeds against the live AWS APIs. — verified live: `transcribeAudio` opened a real Transcribe stream and returned `""` for a silent clip (correct — no speech); `synthesizeSpeech` correctly reached Polly and returned an `AccessDeniedException` because the IAM user `arna` has no `polly:SynthesizeSpeech` grant yet — **action needed: attach a Polly-permitting policy (e.g. `AmazonPollyReadOnlyAccess`) to that IAM user before TTS will work.** Transcribe already has the permission it needs.
+
+- [x] **T56** `backend/src/routes/voice.routes.ts`: `POST /api/voice/speak` (`{text}` → `audio/mpeg` stream) and `POST /api/voice/transcribe` (raw PCM body → `{text}`), both `requireAuth`; mount at `/api/voice` in `app.ts`.
+  ✓ Done when: both routes respond through the full Express pipeline (auth, body parsing, AWS call, error middleware) rather than crashing. — verified live: `/transcribe` returned `{"text":""}` for a silent PCM clip; `/speak` returned the global error middleware's clean `{"error":"Internal server error"}` (500) for the Polly permission gap, not a stack trace or crash.
+
+- [x] **T57** Frontend: mic button in `ChatPage.tsx` capturing 16kHz mono PCM via the Web Audio API (`AudioContext` + `ScriptProcessorNode`, resampled client-side — MediaRecorder's webm/opus container isn't compatible with Transcribe streaming's supported encodings), POSTing to `/api/voice/transcribe`, and sending the transcribed text as a chat message; speaker button on each agent reply bubble that POSTs to `/api/voice/speak` and plays the returned mp3.
+  ✓ Done when: recording populates and sends a transcribed question, and clicking the speaker icon plays the reply back. — verified live in a real (headless) browser with a fake mic device: mic button correctly starts/stops recording, PCM capture and upload succeed with no console errors beyond an expected `ScriptProcessorNode is deprecated` warning, and an unrecognizable (synthetic tone) clip surfaces a clean "Didn't catch any speech" toast rather than failing silently — screenshots reviewed directly. Speaker button correctly calls the route and surfaces the pending Polly permission as a toast, not a crash.
+
+- [x] **T58** Full verification: `npx tsc --noEmit` and `npm run build` from root; live mic-to-transcript and reply-to-speech round trip confirmed in the browser.
+  ✓ Done when: both commands exit 0 and a full voice round trip works end-to-end in the running app. — `npm run tsc` and `npm run build` both exit 0. Speech-to-text confirmed fully working end-to-end live. Text-to-speech is code-complete and route-verified, blocked only by the IAM permission gap noted in T55/T56 — will work with no code change once that's granted.

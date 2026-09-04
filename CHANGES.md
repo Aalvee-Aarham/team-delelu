@@ -24,3 +24,12 @@
 [frontend/package.json] add recharts@2 | T50
 [backend/src/agent/provider.types.ts] add ToolCall.geminiThoughtSignature | Gemini rejects a functionCall replayed without the exact signature it issued
 [backend/src/agent/provider.gemini.ts] capture thoughtSignature on Gemini's own tool calls, replay it back verbatim; collapse cross-provider tool-call turns (e.g. after Groq->Gemini failover) to plain text instead of a forged functionCall | fixes "Internal server error" (all providers failed) whenever a multi-round tool loop failed over to Gemini mid-conversation — confirmed live pre-fix reproduction and post-fix success
+[.claude/rules/dependencies.md] add @aws-sdk/client-polly, @aws-sdk/client-transcribe-streaming | voice feature (T54-T58)
+[backend/src/config/env.ts] add AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_REGION | voice feature AWS credentials
+[backend/.env.example] add AWS placeholders | same
+[backend/.env] add real AWS credentials (gitignored, never committed) | user supplied these directly in chat — flagged for rotation
+[backend/src/services/voice.service.ts] created | Polly synthesizeSpeech + Transcribe streaming transcribeAudio
+[backend/src/routes/voice.routes.ts] created, mounted at /api/voice | POST /speak (text->mp3), POST /transcribe (pcm->text)
+[frontend/src/lib/voice.ts] created | browser-side PCM capture/resample (VoiceRecorder), transcribeAudio, speakText API calls
+[frontend/src/pages/ChatPage.tsx] add mic button (record/stop, populates+sends transcribed text) and speaker button per reply bubble | T57
+[frontend/package.json] no new frontend deps — voice uses native MediaDevices/AudioContext + existing axios instance

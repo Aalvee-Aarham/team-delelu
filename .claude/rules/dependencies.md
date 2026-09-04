@@ -8,6 +8,8 @@
 - bcryptjs 2 — password hashing
 - cors 2 — cross-origin for the frontend dev server
 - dotenv 16 — load `.env` in development
+- @aws-sdk/client-polly — text-to-speech for the agent's spoken replies
+- @aws-sdk/client-transcribe-streaming — speech-to-text for the user's spoken questions
 - tsx 4 (dev) — run the TypeScript backend without a build step
 - typescript 5 (dev) — type checking
 
